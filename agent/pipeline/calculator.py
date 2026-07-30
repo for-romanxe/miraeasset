@@ -34,7 +34,35 @@ def tax_credit(pension_saving: int = 0, irp: int = 0,
     return result, trace, "doc41"
 
 
+def pension_income_tax(age: int | None = None) -> tuple[dict, str, str]:
+    """연금소득세율(지방소득세 포함). 나이 미상이면 전 구간 표를 돌려준다."""
+    table = [(55, 69, 5.5), (70, 79, 4.4), (80, 200, 3.3)]
+    if age is None:
+        trace = "연금소득세율: 55~69세 5.5% / 70~79세 4.4% / 80세 이상 3.3% (연금 형태 수령 시)"
+        return {"table": table}, trace, "doc38"
+    rate = next((r for lo, hi, r in table if lo <= age <= hi), None)
+    if rate is None:
+        trace = f"{age}세는 연금 수령 개시 연령(55세) 미만 — 연금소득세율 적용 대상 아님"
+        return {"rate": None}, trace, "doc38"
+    trace = f"연금소득세율: {age}세 → {rate}% (55~69세 5.5 / 70대 4.4 / 80세~ 3.3)"
+    return {"rate": rate}, trace, "doc38"
+
+
+def retirement_tax_discount(receive_year: int = 1) -> tuple[dict, str, str]:
+    """퇴직소득세 감면율: 연금 수령 시 30%, 11년차부터 40%."""
+    rate = 0.4 if receive_year >= 11 else 0.3
+    trace = (f"퇴직소득세 감면: 연금수령 {receive_year}년차 → {rate:.0%} 감면 "
+             "(1~10년차 30%, 11년차부터 40%)")
+    return {"discount": rate}, trace, "doc51"
+
+
 AMOUNT = re.compile(r"(\d[\d,]*)\s*만\s*원|(\d[\d,]*)\s*원")
+AGE = re.compile(r"(\d{2})\s*세")
+
+
+def extract_age(question: str) -> int | None:
+    m = AGE.search(question)
+    return int(m.group(1)) if m else None
 
 
 def extract_amounts(question: str) -> list[int]:

@@ -58,10 +58,23 @@ def _split_long(text: str, limit: int = 900) -> list[str]:
         return [text] if text else []
     out, buf = [], ""
     for para in text.split("\n\n"):
-        if buf and len(buf) + len(para) > limit:
-            out.append(buf.strip())
-            buf = ""
-        buf += para + "\n\n"
+        # 표(마크다운)는 빈 줄이 없어 문단 하나가 수만 자가 된다.
+        # 문단 자체가 한도를 넘으면 줄 단위로 다시 쪼갠다 (표는 행 묶음이 된다).
+        pieces = [para]
+        if len(para) > limit:
+            pieces, line_buf = [], ""
+            for line in para.split("\n"):
+                if line_buf and len(line_buf) + len(line) > limit:
+                    pieces.append(line_buf)
+                    line_buf = ""
+                line_buf += line + "\n"
+            if line_buf.strip():
+                pieces.append(line_buf)
+        for piece in pieces:
+            if buf and len(buf) + len(piece) > limit:
+                out.append(buf.strip())
+                buf = ""
+            buf += piece + "\n\n"
     if buf.strip():
         out.append(buf.strip())
     return out

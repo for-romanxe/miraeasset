@@ -8,12 +8,28 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-TAX = re.compile(r"세액공제|세금|과세|절세|소득세|공제|연말정산|수령한도|수령연차|종합과세")
+TAX = re.compile(r"세액공제|세금|과세|절세|소득세|공제|연말정산|수령한도|수령연차|종합과세|세율|감면")
 PRODUCT = re.compile(r"펀드|상품|ETF|보수|수수료|위험등급|수익률|추천|비교|잔고|클래스|투자설명서")
 PROCEDURE = re.compile(r"중도인출|해지|이전|절차|방법|어떻게 하|신청|서류|인출")
 SYSTEM = re.compile(r"DB|DC|IRP|퇴직연금|연금저축|디폴트옵션|규약|가입|제도|압류|지연이자|퇴직금")
 
 RECOMMEND = re.compile(r"추천|골라|어떤 게 좋|뭐가 좋|하나만|추천해")
+
+# 보유 데이터(사적연금 제도·세제 문서 + 투자설명서)로 답할 수 없는 범위.
+# 무리한 답변 대신 한계 고지로 응답한다 (평가지표: 정보한계 대응)
+# 주의: 짧은 키워드는 다른 단어의 부분 문자열로 걸린다 ("4주가 지나기"의 '주가').
+# 문맥을 함께 요구하는 패턴으로 쓴다.
+OUT_OF_SCOPE = re.compile(
+    r"국민연금|공무원연금|군인연금|사학연금|기초연금"      # 공적연금 (과제 범위 밖)
+    r"|주가.{0,8}(전망|어떻|얼마|알려)|시세|얼마나 오를|오를까"  # 미래 예측·실시간 시장정보
+    r"|수익률.{0,6}(전망|예상)|(전망|예상).{0,6}수익률"
+    r"|실시간|오늘.*(금리|환율)|(내|제) .*(잔고|계좌).*(조회|알려)|잔고 조회")
+
+# 개인정보·프롬프트 공격 등 안전성 이슈 (평가지표: 안전성 및 신뢰성)
+UNSAFE = re.compile(
+    r"주민등록번호|비밀번호|계좌번호|카드번호"
+    r"|지시를? 무시|이전 (지시|명령)|프롬프트|시스템 (메시지|메세지)"
+    r"|무조건.*(추천|사라)|단정적으로")
 
 # 조건부 추천에 필요한 슬롯과 감지 패턴
 SLOTS = {
@@ -30,6 +46,8 @@ class Route:
     filled_slots: dict[str, bool] = field(default_factory=dict)
     missing_slots: list[str] = field(default_factory=list)
     needs_clarification: bool = False
+    out_of_scope: bool = False
+    unsafe: bool = False
 
     def describe(self) -> str:
         s = f"유형={','.join(self.categories) or '일반'}"
@@ -41,6 +59,12 @@ class Route:
 
 def route(question: str) -> Route:
     r = Route()
+    if UNSAFE.search(question):
+        r.unsafe = True
+        return r
+    if OUT_OF_SCOPE.search(question):
+        r.out_of_scope = True
+        return r
     if TAX.search(question):
         r.categories.append("세제")
     if PRODUCT.search(question):

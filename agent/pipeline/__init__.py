@@ -1,6 +1,8 @@
 """파이프라인 오케스트레이션: 라우팅 → 검색/조회 → 계산 → 생성."""
 from __future__ import annotations
 
+import re
+
 from . import calculator, generator
 from .retriever import fund_brief, get_docs_index, get_funds_index
 from .router import route
@@ -13,6 +15,16 @@ def answer(question_id: str, question: str) -> dict:
 
     r = route(question)
     trace.append(f"[라우팅] {r.describe()}")
+
+    # 안전성 가드: 개인정보·프롬프트 공격성 질의는 검색 없이 정중히 거절
+    if r.unsafe:
+        trace.append("[가드] 안전성 이슈 감지 → 거절 응답")
+        return _respond(question_id, question, "", trace, generator.guard_answer())
+
+    # 정보한계: 보유 데이터로 답할 수 없는 범위는 무리한 답변 대신 한계 고지
+    if r.out_of_scope:
+        trace.append("[한계] 데이터 범위 밖 질의 → 한계 고지")
+        return _respond(question_id, question, "", trace, generator.limitation_answer())
 
     # 역질문 분기: 조건이 빈 추천 질의는 검색·생성 없이 확인 질문으로 응답
     if r.needs_clarification:
@@ -39,17 +51,27 @@ def answer(question_id: str, question: str) -> dict:
     else:
         trace.append("[검색] 관련 문서 없음")
 
-    # 세제 계산: 세액공제 질의 + 금액이 있으면 계산기 사용
-    if "세제" in r.categories and "세액공제" in question:
-        amounts = calculator.extract_amounts(question)
-        result, calc_trace, basis = calculator.tax_credit(
-            pension_saving=amounts[0] if amounts else 0,
-            irp=amounts[1] if len(amounts) > 1 else 0)
-        if amounts:
-            trace.append(f"[계산] 세액공제({basis} 근거): {calc_trace}")
+    # 세제 계산: 수치가 걸린 질의는 LLM이 아니라 계산기로
+    if "세제" in r.categories:
+        if "세액공제" in question:
+            amounts = calculator.extract_amounts(question)
+            result, calc_trace, basis = calculator.tax_credit(
+                pension_saving=amounts[0] if amounts else 0,
+                irp=amounts[1] if len(amounts) > 1 else 0)
+            if amounts:
+                trace.append(f"[계산] 세액공제({basis} 근거): {calc_trace}")
+                calc_notes.append(calc_trace + f" (근거: {basis})")
+            else:
+                trace.append("[계산] 금액 미제시 → 한도 정보만 근거로 제공")
+        if re.search(r"연금소득세|받을 때.*세[금율]|수령.*세[금율]|세율", question):
+            _, calc_trace, basis = calculator.pension_income_tax(
+                calculator.extract_age(question))
+            trace.append(f"[계산] 연금소득세({basis} 근거): {calc_trace}")
             calc_notes.append(calc_trace + f" (근거: {basis})")
-        else:
-            trace.append("[계산] 금액 미제시 → 한도 정보만 근거로 제공")
+        if re.search(r"퇴직(금|소득세).*(연금.*받|수령|감면)|감면.*퇴직", question):
+            _, calc_trace, basis = calculator.retirement_tax_discount()
+            trace.append(f"[계산] 퇴직소득세 감면({basis} 근거): {calc_trace}")
+            calc_notes.append(calc_trace + f" (근거: {basis})")
 
     answer_text = generator.generate_answer(question, context_blocks, calc_notes)
     trace.append(f"[생성] LLM={generator.get_llm().name}, 근거블록 {len(context_blocks)}개")

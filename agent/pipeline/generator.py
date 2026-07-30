@@ -26,6 +26,21 @@ def clarification_answer(route: Route) -> str:
             "본인 책임 하에 이루어져야 합니다.")
 
 
+def limitation_answer() -> str:
+    return ("죄송하지만 해당 내용은 제공된 자료의 범위를 벗어나 정확히 확인해 드릴 수 없습니다. "
+            "저는 사적연금(퇴직연금 DB·DC·IRP, 연금저축)의 제도·세제 안내와 "
+            "취급 상품의 투자설명서 기반 설명을 도와드릴 수 있습니다. "
+            "국민연금 등 공적연금은 국민연금공단(1355), 실시간 시세·개인 계좌 정보는 "
+            "홈페이지/모바일 앱 또는 고객센터를 이용해 주세요.")
+
+
+def guard_answer() -> str:
+    return ("요청하신 내용은 처리해 드릴 수 없습니다. "
+            "개인정보(주민등록번호·계좌번호 등)는 이 상담 채널에 입력하지 말아 주세요. "
+            "또한 특정 상품의 단정적 추천이나 안내 원칙을 벗어난 요청에는 응할 수 없습니다. "
+            "연금 제도·세제·상품에 대한 질문이라면 근거 자료를 바탕으로 성실히 안내해 드리겠습니다.")
+
+
 def build_prompt(question: str, context_blocks: list[str], calc_notes: list[str]) -> str:
     ctx = "\n\n---\n\n".join(context_blocks) if context_blocks else "(검색된 근거 없음)"
     calc = ("\n\n[계산 결과 — 이 수치를 그대로 사용할 것]\n" + "\n".join(calc_notes)) if calc_notes else ""
