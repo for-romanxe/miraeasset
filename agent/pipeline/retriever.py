@@ -18,31 +18,67 @@ TOKEN = re.compile(r"[가-힣]+|[A-Za-z]+|\d+")
 
 
 def tokenize(text: str) -> list[str]:
+    """어절 + 2음절 bigram. 반복 횟수가 곧 BM25 가중치다.
+
+    - 한글 어절은 2회(온전한 매칭 우대), bigram은 1회(재현율 확보)
+    - 영문·숫자(ETF, DB, DC, 100 등)는 3회 — 흔한 한글 bigram에 묻히기 쉬운
+      반면 변별력은 가장 높은 토큰이라 강하게 친다
+    """
     out = []
     for tok in TOKEN.findall(text):
         if re.match(r"[가-힣]", tok):
-            out.append(tok)
+            out += [tok, tok]
             out += [tok[i:i + 2] for i in range(len(tok) - 1)]
         else:
-            out.append(tok.lower())
+            out += [tok.lower()] * 3
     return out
+
+
+# 고객 표현 ↔ 문서 용어의 어휘 갭을 메우는 도메인 동의어.
+# 질의에 키가 있으면 값 단어들을 질의에 덧붙인다 (BM25라 추가만으로 가중).
+# 주의: 키는 부분 문자열로 매칭되므로 다른 단어에 포함되지 않게 어간+어미로
+# 구체화한다 ("해지"는 "정해지는"에 걸린다).
+QUERY_EXPAND = {
+    "해지하": "중도인출 기타소득세",
+    "해지할": "중도인출 기타소득세",
+    "해지를": "중도인출 기타소득세",
+    "깨면": "중도해지 중도인출 기타소득세",
+    "불이익": "세금 기타소득세 페널티",
+    "살 수": "매수 매매 거래",
+    "사고 싶": "매수 매매",
+    "수수료": "보수 총보수",
+    "안정적": "위험등급 낮은위험 채권",
+    "얼마까지": "한도",
+}
+
+TITLE_BOOST = 3  # 제목 토큰 반복 횟수. 제목은 주제를 압축하므로 강하게 친다
 
 
 class DocsIndex:
     def __init__(self):
         self.chunks = data.load_doc_chunks()
-        self.bm25 = BM25Okapi([tokenize(c["text"]) for c in self.chunks])
+        self.bm25 = BM25Okapi([
+            tokenize(c["text"]) + tokenize(c["title"]) * TITLE_BOOST
+            for c in self.chunks])
 
-    def search(self, query: str, k: int = 5, topics: list[str] | None = None) -> list[dict]:
+    def search(self, query: str, k: int = 5, topics: list[str] | None = None,
+               max_per_doc: int = 2) -> list[dict]:
+        for key, extra in QUERY_EXPAND.items():
+            if key in query:
+                query += " " + extra
         scores = self.bm25.get_scores(tokenize(query))
         order = sorted(range(len(scores)), key=lambda i: -scores[i])
-        hits = []
+        hits, per_doc = [], {}
         for i in order:
             if scores[i] <= 0:
                 break
             c = self.chunks[i]
             if topics and c["topic"] not in topics:
                 continue
+            # 긴 문서가 상위 슬롯을 독식하지 않게 문서당 청크 수를 제한한다
+            if per_doc.get(c["doc_id"], 0) >= max_per_doc:
+                continue
+            per_doc[c["doc_id"]] = per_doc.get(c["doc_id"], 0) + 1
             hits.append({**c, "score": round(float(scores[i]), 2)})
             if len(hits) >= k:
                 break

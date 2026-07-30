@@ -1,0 +1,46 @@
+{"id": "ref-1", "type": "제도", "difficulty": "하", "question": "DC와 DB, 퇴직금이 정해지는 방식이랑 운용 주체가 어떻게 다른가요?", "expect": {"docs": ["doc11", "doc15", "doc10", "doc13"]}}
+{"id": "ref-2", "type": "세제", "difficulty": "하", "question": "연금저축이랑 IRP에 넣으면 세액공제 얼마까지 되나요? 다 합쳐서요.", "expect": {"docs": ["doc41"]}}
+{"id": "ref-3", "type": "종합", "difficulty": "상", "question": "명퇴하는 교사예요. 명퇴수당을 연금계좌에 넣으면 세금 감면이 어마어마하다던데, 절세법만 알려주세요.", "expect": {"docs": ["doc26"]}}
+{"id": "ref-4", "type": "상품비교", "difficulty": "중", "question": "솔로몬 국공채 단기 · 중장기 · 장기, 뭐가 달라요? 안정적인 걸 원해요.", "expect": {"isins": ["KR5153420063", "KR5153420079", "KR5153420105"]}}
+{"id": "ref-5", "type": "조건부추천", "difficulty": "중", "question": "좋은 연금 상품 하나 추천해 주세요.", "expect": {"clarify": true}}
+{"id": "sys-1", "type": "제도", "difficulty": "하", "question": "IRP 계좌는 누가 가입할 수 있나요?", "expect": {"docs": ["doc14", "doc10"]}}
+{"id": "sys-2", "type": "제도", "difficulty": "중", "question": "회사가 DC 부담금을 제때 안 넣으면 지연이자를 받을 수 있나요?", "expect": {"docs": ["doc17"]}}
+{"id": "sys-3", "type": "제도", "difficulty": "중", "question": "퇴직연금도 압류될 수 있나요?", "expect": {"docs": ["doc16"]}}
+{"id": "sys-4", "type": "제도", "difficulty": "중", "question": "퇴직연금규약은 뭐고 왜 필요한가요?", "expect": {"docs": ["doc12"]}}
+{"id": "sys-5", "type": "제도", "difficulty": "중", "question": "퇴직연금 가입자 교육은 의무인가요?", "expect": {"docs": ["doc18"]}}
+{"id": "sys-6", "type": "제도", "difficulty": "중", "question": "실물이전 제도가 뭔가요? 펀드를 팔지 않고 다른 증권사로 옮길 수 있다던데요.", "expect": {"docs": ["doc34", "doc35"]}}
+{"id": "tax-1", "type": "세제", "difficulty": "하", "question": "연금저축 400만원, IRP 300만원 넣었는데 세액공제 얼마 받아요?", "expect": {"docs": ["doc41"], "trace_contains": ["[계산]", "1,155,000"]}}
+{"id": "tax-2", "type": "세제", "difficulty": "중", "question": "연금 받을 때 세금은 몇 퍼센트나 떼나요? 나이에 따라 다르다던데.", "expect": {"docs": ["doc38", "doc39", "doc40", "doc21", "doc2"]}}
+{"id": "tax-3", "type": "세제", "difficulty": "중", "question": "연금소득이 많으면 종합과세된다는데 기준이 얼마인가요?", "expect": {"docs": ["doc38"]}}
+{"id": "tax-4", "type": "세제", "difficulty": "중", "question": "연금수령한도는 어떻게 계산하나요?", "expect": {"docs": ["doc39"]}}
+{"id": "tax-5", "type": "세제", "difficulty": "중", "question": "퇴직금을 일시금으로 받는 것과 IRP로 받아서 연금으로 받는 것, 세금 차이가 얼마나 나요?", "expect": {"docs": ["doc51", "doc52"]}}
+{"id": "tax-6", "type": "세제", "difficulty": "중", "question": "연금계좌에서 해외 ETF에 투자하면 일반계좌보다 세금이 유리한가요?", "expect": {"docs": ["doc42"]}}
+{"id": "tax-7", "type": "세제", "difficulty": "상", "question": "임원인데 퇴직금이 한도를 초과하면 세금이 어떻게 되나요?", "expect": {"docs": ["doc45"]}}
+{"id": "tax-8", "type": "세제", "difficulty": "중", "question": "세액공제 한도를 넘겨서 연금저축에 더 넣는 게 의미가 있나요?", "expect": {"docs": ["doc44"]}}
+{"id": "proc-1", "type": "절차", "difficulty": "중", "question": "무주택자인데 집을 사려고 합니다. 퇴직연금 중도인출이 가능한가요?", "expect": {"docs": ["doc46", "doc47", "doc48", "doc49", "doc50", "doc5", "doc20", "doc22"]}}
+{"id": "proc-2", "type": "절차", "difficulty": "중", "question": "IRP를 중간에 해지하면 어떤 불이익이 있나요?", "expect": {"docs": ["doc20", "doc5"]}}
+{"id": "proc-3", "type": "절차", "difficulty": "중", "question": "ISA 만기 자금을 연금계좌로 옮기면 뭐가 좋은가요?", "expect": {"docs": ["doc23", "doc33", "doc4"]}}
+{"id": "prod-1", "type": "상품설명", "difficulty": "중", "question": "미래에셋장기성장포커스 펀드는 위험등급이 어떻게 되고 보수는 얼마인가요?", "expect": {"isins": ["KR510902511M"]}}
+{"id": "prod-2", "type": "상품", "difficulty": "중", "question": "퇴직연금 계좌에서 ETF도 살 수 있나요?", "expect": {"docs": ["doc53", "doc56"]}}
+{"id": "prod-3", "type": "상품", "difficulty": "중", "question": "퇴직연금 적립금 100%까지 투자할 수 있는 상품은 어떤 것들인가요?", "expect": {"docs": ["doc58"]}}
+{"id": "rec-1", "type": "조건부추천", "difficulty": "중", "question": "은퇴가 얼마 안 남았는데 뭘 사면 좋을지 펀드 추천해 주세요.", "expect": {"clarify": true}}
+{"id": "do-1", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "디폴트옵션은 A로 지정만 해뒀고 아직 실제로 매수된 디폴트옵션은 없습니다. 이때 B유형으로 옵트인 매수해도 되나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-6", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "현재 디폴트옵션 A와 B를 둘 다 보유 중입니다. 이 상태에서 A를 더 옵트인으로 매수할 수 있나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-11", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "일반 펀드만 보유하고 있고 디폴트옵션 보유는 없습니다. 디폴트옵션 B를 옵트인으로 매수할 수 있나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-16", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "B를 옵트인으로 사둔 상태에서 B를 일부만 매도하고 C를 새로 옵트인 매수할 수 있나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-21", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "1,000만원 중 500만원은 A, 500만원은 B로 동시에 옵트인하고 싶습니다. 가능한가요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-26", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "기존 가입자의 정기예금이 6월 1일에 만기됐습니다. 디폴트옵션 적용 안내는 언제 받게 되나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-31", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "만기 후 4주가 지나기 전에 지정상품을 A에서 B로 바꾸면, 통지는 어떤 상품 기준으로 오나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-36", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "첫 번째 만기분이 이미 디폴트옵션으로 들어간 뒤 같은 상품의 다음 만기분이 왔습니다. 또 통지가 오나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-41", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "예금 1천만원과 펀드 1천만원을 보유 중인데 예금만 만기됐습니다. 전체 적립금이 디폴트옵션으로 바뀌나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-46", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "‘만기 때마다 금리 높은 예금으로 알아서 옮겨주세요’ 같은 포괄운용지시는 가능한가요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-51", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "포트폴리오형 디폴트옵션은 안에 여러 상품이 있어도 상품 1개로 보나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-56", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "포트폴리오 안에 예금과 펀드가 함께 들어 있습니다. 예금 만기 때 자동 재예치 금지 규정이 그대로 적용되나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-61", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "포트폴리오 전체 위험등급이 바뀌거나 운용전략이 크게 바뀌면 어떻게 되나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-66", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "포트폴리오를 해체해서 구성상품 3개를 그대로 들고 있어도 디폴트옵션을 보유한 것으로 보면 되나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-71", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "현재 A가 디폴트옵션으로 운용 중인데, 앞으로 적용될 지정상품만 B로 바꿀 수 있나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-76", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "변경된 디폴트옵션 상품이 마음에 들지 않습니다. 어떻게 해야 하나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-81", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "승인취소 후 제가 아무것도 고르지 않으면 적립금은 어떻게 되나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-86", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "디폴트옵션을 제가 직접 사려는 건데도 4주나 2주를 기다려야 하나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-91", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "지금 펀드만 100% 보유 중인데, 디폴트옵션이 들어오면서 펀드를 강제로 팔고 바꾸나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
+{"id": "do-96", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "어떤 유형은 수익률이 10%를 넘는데 왜 전체 디폴트옵션 평균은 3.7%인가요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
