@@ -1,8 +1,33 @@
-# 연금 Agent — 데이터 구조화 파이프라인
+# 연금 Agent
 
-제10회 2026 미래에셋증권 AI Festival "연금 Agent" 과제의 데이터 전처리 결과물.
-주최 측 배포 데이터(투자설명서 PDF 100건 + 안내문서 58건)를 Agent가 검색·인용할 수 있는
-정형 데이터로 변환한다.
+제10회 2026 미래에셋증권 AI Festival "연금 Agent" 과제.
+주최 측 배포 데이터(투자설명서 PDF 100건 + 안내문서 58건)를 정형 데이터로 변환하고,
+이를 근거로 답하는 평가용 API 서버를 만든다.
+
+## 팀 문서
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 파이프라인 설계안·로드맵 (논의용 초안)
+- [docs/IDEAS.md](docs/IDEAS.md) — 차별화 아이디어 7선과 우선순위
+- [docs/PENSION_BASICS.md](docs/PENSION_BASICS.md) — 연금 도메인 개념 정리
+
+## Agent 뼈대 (agent/)
+
+평가 명세의 `GET /answer` 스키마를 그대로 구현한 walking skeleton.
+LLM은 8/6 크레딧 수령 전까지 Mock이며, `CLOVASTUDIO_API_KEY` 환경변수를
+설정하면 HyperCLOVA X 호출로 자동 전환된다 (agent/llm.py).
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/uvicorn agent.server:app --host 0.0.0.0 --port 8000
+curl -G "http://localhost:8000/answer" \
+  --data-urlencode "question_id=Q-001" \
+  --data-urlencode "question=연금저축이랑 IRP 세액공제 한도가 얼마인가요?"
+```
+
+파이프라인: 라우터(유형·슬롯 판정) → 검색(docs BM25 + funds 정형 조회) →
+세제 계산기 → 생성(근거 고정 프롬프트). 조건이 빈 추천 질의는 역질문으로 분기.
+
+## 데이터 파이프라인 (parser/)
 
 ## 산출물
 
