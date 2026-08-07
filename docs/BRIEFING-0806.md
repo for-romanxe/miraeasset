@@ -5,10 +5,16 @@
 
 ## 세션 1 — NAVER Cloud 인프라·CLOVA Studio
 
-### 크레딧 (팀당 20만원)
-- ncloud.com 가입은 2단계: 일반 회원가입 + **결제정보 등록**까지 해야 쿠폰 등록 가능
-- 신청 폼 → 메일로 쿠폰 → 마이페이지 > 쿠폰 등록. 문제 시 주최 측 문의
-- ⚠️ **유효기간 9/30. 평가 종료(9/20) 후 리소스 전부 삭제** — 크레딧 초과분 보전 없음
+### 크레딧 (팀당 20만원) — 공식 가이드 PDF로 확정 (2026-08-07 갱신)
+- 신청 페이지: **https://www.ncloud.com/coupon/tsGHMDEE4T** (ncloud.com 로그인 상태로 접속)
+- 팀 대표 1인만 신청. 가입 시 **결제수단 등록까지** 완료돼 있어야 함
+- **승인까지 최대 2영업일(주말·공휴일 제외)** → ncloud.com 계정 이메일로 쿠폰 발송.
+  안 보이면 스팸함 + 신청 시 로그인했던 계정 이메일 확인
+- 쿠폰 등록: 마이페이지 > 결제 관리 > **크레딧 및 할인 관리**에서 코드 입력
+  (신청만으로는 적용 안 됨 — 반드시 코드 등록)
+- ⚠️ **사용 전 '적용 서비스' 목록 확인** — 목록에 없는 상품은 크레딧 있어도 일반 과금
+- 크레딧 사용기간 2026.08.05~**09.30**. 평가 종료(9/20) 후 리소스 전부 삭제 — 초과분 보전 없음
+- 크레딧 문의: dl_ai_festival_2026@navercorp.com
 
 ### 평가용 서버 (노트북 불가 — 외부 접근 필요)
 1. VPC 생성 (계정당 최대 3개, RFC1918, /28~/16)
@@ -16,7 +22,11 @@
 3. Server 생성 (예시: High-CPU 2vCPU·4GB·스토리지 20GB) — 인증키 분실 주의
 4. ACG: Inbound 22/3389/80/443, Outbound 1-65535
 - 접속: 리눅스 root / 윈도우 administrator. 비밀번호는 "관리자 비밀번호 확인"에 인증키 첨부해 조회
-- HTTPS(도메인·인증서)는 추후 별도 공지 예정
+- **HTTPS 구성 = NCP의 Global DNS + Certificate Manager 조합** (서비스소개 11쪽) — 상세 추후 공지
+- 서비스소개 11쪽에서 **서버 운영 기간 09.07~09.20 재확인** → 녹음의 "9/21 제출"은
+  오인식일 가능성이 높음 (제출 9/6 유지로 판단, 공지로 최종 확인)
+- CLOVA API v3 스펙 확인: `clovastudio.stream.ntruss.com/v3/chat-completions/{model}`,
+  Bearer 키 + X-NCP-CLOVASTUDIO-REQUEST-ID 헤더, content는 typed part 배열 (agent/llm.py 반영됨)
 
 ### CLOVA Studio
 - **HCX = 모델(엔진), CLOVA Studio = 도구 모음** (Playground / Tuning / Explorer / Skill Trainer)
