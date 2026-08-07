@@ -56,8 +56,82 @@ def retirement_tax_discount(receive_year: int = 1) -> tuple[dict, str, str]:
     return {"discount": rate}, trace, "doc51"
 
 
-AMOUNT = re.compile(r"(\d[\d,]*)\s*만\s*원|(\d[\d,]*)\s*원")
+def pension_withdrawal_limit(account_value: int,
+                             receive_year: int = 1) -> tuple[dict, str, str]:
+    """연금계좌 평가액과 수령연차로 연간 연금수령한도를 계산."""
+    if receive_year >= 11:
+        trace = f"연금수령 {receive_year}년차부터는 연금수령한도 없음"
+        return {"limit": None, "unlimited": True}, trace, "doc39"
+    if receive_year < 1:
+        raise ValueError("receive_year는 1 이상이어야 합니다")
+    limit = account_value / (11 - receive_year) * 1.2
+    trace = (f"연금수령한도: {account_value:,}원 ÷ (11 - {receive_year}년차) × 120% "
+             f"= {limit:,.0f}원")
+    return {"limit": round(limit), "unlimited": False}, trace, "doc39"
+
+
+UNAVOIDABLE_REASONS = re.compile(
+    r"파산|개인회생|천재지변|재난|사망|해외이주|금융회사(?:의)?\s*영업정지")
+QUALIFYING_CARE = re.compile(
+    r"(?:([3-9]|\d{2,})\s*개월(?:\s*이상)?.{0,8}요양|"
+    r"요양.{0,8}([3-9]|\d{2,})\s*개월(?:\s*이상)?)")
+
+
+def early_withdrawal_tax(amount: int, reason: str = "일반",
+                         age: int | None = None) -> tuple[dict, str, str]:
+    """세액공제 납입금·운용수익의 중도인출 세금을 계산."""
+    unavoidable = bool(UNAVOIDABLE_REASONS.search(reason) or QUALIFYING_CARE.search(reason))
+    if unavoidable:
+        tax_type = "연금소득세"
+        note = "세법상 부득이한 사유"
+        if age is None:
+            min_tax, max_tax = amount * 0.033, amount * 0.055
+            trace = (f"중도인출 {amount:,}원: {reason}은 {note} → 연령에 따라 3.3%~5.5% "
+                     f"{tax_type}({min_tax:,.0f}원~{max_tax:,.0f}원)")
+            return {"tax": None, "tax_min": round(min_tax), "tax_max": round(max_tax),
+                    "rate": None, "rate_range": (0.033, 0.055), "tax_type": tax_type,
+                    "unavoidable": True}, trace, "doc20, doc46~doc50"
+        rate = 0.055 if age < 70 else 0.044 if age < 80 else 0.033
+    else:
+        rate = 0.165
+        tax_type = "기타소득세"
+        note = "세법상 부득이한 사유 아님"
+    tax = amount * rate
+    trace = (f"중도인출 {amount:,}원 × {rate:.1%} {tax_type} "
+             f"({reason}: {note}) = {tax:,.0f}원")
+    return {"tax": round(tax), "rate": rate, "tax_type": tax_type,
+            "unavoidable": unavoidable}, trace, "doc20, doc46~doc50"
+
+
+def private_pension_tax_comparison(amount: int,
+                                   comprehensive_rate: float) -> tuple[dict, str, str]:
+    """연 1,500만원 초과 사적연금의 종합과세와 16.5% 분리과세를 비교."""
+    if amount <= 15_000_000:
+        trace = f"사적연금 {amount:,}원은 연 15,000,000원 이하 → 종합과세 비교 대상 아님"
+        return {"comparison_required": False}, trace, "doc38"
+    comprehensive_tax = amount * comprehensive_rate
+    separate_tax = amount * 0.165
+    favorable = "종합과세" if comprehensive_tax <= separate_tax else "16.5% 분리과세"
+    trace = (f"사적연금 전체 {amount:,}원 × 종합세율 {comprehensive_rate:.1%} "
+             f"= {comprehensive_tax:,.0f}원 vs × 16.5% = {separate_tax:,.0f}원 "
+             f"→ {favorable} 유리")
+    return {"comparison_required": True,
+            "comprehensive_tax": round(comprehensive_tax),
+            "separate_tax": round(separate_tax),
+            "favorable": favorable}, trace, "doc38"
+
+
+def isa_transfer_credit(transfer_amount: int) -> tuple[dict, str, str]:
+    """ISA 만기자금의 연금계좌 전환에 따른 추가 세액공제 대상액 계산."""
+    additional_eligible = min(transfer_amount * 0.1, 3_000_000)
+    trace = (f"ISA 전환금액 {transfer_amount:,}원 × 10% = {transfer_amount * 0.1:,.0f}원, "
+             f"300만원 한도 적용 → 추가 세액공제 대상 {additional_eligible:,.0f}원")
+    return {"additional_eligible": round(additional_eligible)}, trace, "doc23"
+
+
+AMOUNT = re.compile(r"(\d[\d,]*)\s*억\s*원|(\d[\d,]*)\s*만\s*원|(\d[\d,]*)\s*원")
 AGE = re.compile(r"(\d{2})\s*세")
+PERCENT = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 
 
 def extract_age(question: str) -> int | None:
@@ -66,11 +140,17 @@ def extract_age(question: str) -> int | None:
 
 
 def extract_amounts(question: str) -> list[int]:
-    """질의에서 금액(원)을 추출. v0: 만원/원 표기만."""
+    """질의에서 금액(원)을 추출. v0: 억원/만원/원 표기."""
     out = []
-    for man, won in AMOUNT.findall(question):
-        if man:
+    for eok, man, won in AMOUNT.findall(question):
+        if eok:
+            out.append(int(eok.replace(",", "")) * 100_000_000)
+        elif man:
             out.append(int(man.replace(",", "")) * 10_000)
         elif won:
             out.append(int(won.replace(",", "")))
     return out
+
+
+def extract_percentages(question: str) -> list[float]:
+    return [float(value) / 100 for value in PERCENT.findall(question)]

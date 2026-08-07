@@ -53,7 +53,7 @@ def answer(question_id: str, question: str) -> dict:
 
     # 세제 계산: 수치가 걸린 질의는 LLM이 아니라 계산기로
     if "세제" in r.categories:
-        if "세액공제" in question:
+        if "세액공제" in question and "ISA" not in question:
             amounts = calculator.extract_amounts(question)
             result, calc_trace, basis = calculator.tax_credit(
                 pension_saving=amounts[0] if amounts else 0,
@@ -72,6 +72,36 @@ def answer(question_id: str, question: str) -> dict:
             _, calc_trace, basis = calculator.retirement_tax_discount()
             trace.append(f"[계산] 퇴직소득세 감면({basis} 근거): {calc_trace}")
             calc_notes.append(calc_trace + f" (근거: {basis})")
+        if "연금수령한도" in question:
+            amounts = calculator.extract_amounts(question)
+            year = re.search(r"(\d+)\s*년차", question)
+            if amounts:
+                _, calc_trace, basis = calculator.pension_withdrawal_limit(
+                    amounts[0], int(year.group(1)) if year else 1)
+                trace.append(f"[계산] 연금수령한도({basis} 근거): {calc_trace}")
+                calc_notes.append(calc_trace + f" (근거: {basis})")
+        if re.search(r"중도(인출|해지).*(세금|세율|소득세)|세금.*중도(인출|해지)", question):
+            amounts = calculator.extract_amounts(question)
+            if amounts:
+                _, calc_trace, basis = calculator.early_withdrawal_tax(
+                    amounts[0], question, calculator.extract_age(question))
+                trace.append(f"[계산] 중도인출 세금({basis} 근거): {calc_trace}")
+                calc_notes.append(calc_trace + f" (근거: {basis})")
+        if "종합과세" in question and "16.5%" in question:
+            amounts = calculator.extract_amounts(question)
+            rates = calculator.extract_percentages(question)
+            comprehensive_rates = [rate for rate in rates if rate != 0.165]
+            if amounts and comprehensive_rates:
+                _, calc_trace, basis = calculator.private_pension_tax_comparison(
+                    amounts[0], comprehensive_rates[0])
+                trace.append(f"[계산] 종합과세 비교({basis} 근거): {calc_trace}")
+                calc_notes.append(calc_trace + f" (근거: {basis})")
+        if "ISA" in question and re.search(r"전환|이전", question) and "세액공제" in question:
+            amounts = calculator.extract_amounts(question)
+            if amounts:
+                _, calc_trace, basis = calculator.isa_transfer_credit(amounts[0])
+                trace.append(f"[계산] ISA 전환 혜택({basis} 근거): {calc_trace}")
+                calc_notes.append(calc_trace + f" (근거: {basis})")
 
     answer_text = generator.generate_answer(question, context_blocks, calc_notes)
     trace.append(f"[생성] LLM={generator.get_llm().name}, 근거블록 {len(context_blocks)}개")
