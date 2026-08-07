@@ -20,33 +20,49 @@ class MockLLM:
 
 
 class HyperClovaX:
-    """CLOVA Studio Chat Completions 호출. 8/6 키 발급 후 활성화.
+    """CLOVA Studio Chat Completions v3 호출. 키 발급 후 활성화.
 
-    필요 환경변수: CLOVASTUDIO_API_KEY, (선택) CLOVASTUDIO_MODEL
+    엔드포인트·요청 형식은 서비스소개 자료 25쪽 '코드 보기' 스니펫 기준
+    (v3, content가 typed part 배열). 필요 환경변수: CLOVASTUDIO_API_KEY,
+    (선택) CLOVASTUDIO_MODEL — 기본 HCX-005.
     """
 
     name = "hyperclova-x"
-    ENDPOINT = "https://clovastudio.stream.ntruss.com/testapp/v1/chat-completions/{model}"
+    ENDPOINT = "https://clovastudio.stream.ntruss.com/v3/chat-completions/{model}"
 
     def __init__(self):
         self.api_key = os.environ["CLOVASTUDIO_API_KEY"]
         self.model = os.environ.get("CLOVASTUDIO_MODEL", "HCX-005")
 
     def generate(self, prompt: str, *, max_tokens: int = 1024) -> str:
+        import uuid
+
         import requests
 
         r = requests.post(
             self.ENDPOINT.format(model=self.model),
-            headers={"Authorization": f"Bearer {self.api_key}"},
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "X-NCP-CLOVASTUDIO-REQUEST-ID": uuid.uuid4().hex,
+                "Content-Type": "application/json",
+            },
             json={
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{
+                    "role": "user",
+                    "content": [{"type": "text", "text": prompt}],
+                }],
                 "maxTokens": max_tokens,
                 "temperature": 0.1,
+                "topP": 0.8,
             },
             timeout=60,
         )
         r.raise_for_status()
-        return r.json()["result"]["message"]["content"]
+        content = r.json()["result"]["message"]["content"]
+        # v3는 content가 typed part 배열로 올 수 있다
+        if isinstance(content, list):
+            return "".join(p.get("text", "") for p in content)
+        return content
 
 
 def get_llm():
