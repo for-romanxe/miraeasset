@@ -41,6 +41,9 @@ def check(item: dict, resp: dict) -> tuple[bool, list[str]]:
     for s in exp.get("trace_contains", []):
         if s not in trace:
             fails.append(f"trace에 없음: {s!r}")
+    for s in exp.get("answer_contains", []):
+        if s not in resp["answer"]:
+            fails.append(f"answer에 없음: {s!r}")
     return not fails, fails
 
 

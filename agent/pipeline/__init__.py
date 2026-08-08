@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 
-from . import calculator, generator
+from . import calculator, compare, generator, verifier
 from .retriever import fund_brief, get_docs_index, get_funds_index
 from .router import route
 
@@ -40,6 +40,10 @@ def answer(question_id: str, question: str) -> dict:
             r.categories.append("상품")
         trace.append(f"[상품조회] 펀드명 매칭 {len(hits)}건: "
                      + ", ".join(f.get("fund_name", "?")[:20] for f in hits[:3]) + " …")
+        # 비교 질의 + 복수 매칭이면 산문 대신 축별 비교표를 근거로 고정한다
+        if len(hits) >= 2 and compare.wants_comparison(question):
+            trace.append(f"[비교표] {len(hits)}개 펀드 6축 비교표 생성")
+            context_blocks.append(compare.build_table(hits))
         context_blocks += [fund_brief(f) for f in hits]
 
     # 문서 검색 (제도·세제·절차·일반)
@@ -103,10 +107,42 @@ def answer(question_id: str, question: str) -> dict:
                 trace.append(f"[계산] ISA 전환 혜택({basis} 근거): {calc_trace}")
                 calc_notes.append(calc_trace + f" (근거: {basis})")
 
+    llm_name = generator.get_llm().name
     answer_text = generator.generate_answer(question, context_blocks, calc_notes)
-    trace.append(f"[생성] LLM={generator.get_llm().name}, 근거블록 {len(context_blocks)}개")
+    trace.append(f"[생성] LLM={llm_name}, 근거블록 {len(context_blocks)}개")
+
+    # 검증: 답변 수치가 근거 밖에서 오지 않았는지 대조 (환각 방어 1차)
+    answer_text, verify_trace = verifier.apply(
+        answer_text, context_blocks, calc_notes, llm_name)
+    trace.append(verify_trace)
+
+    # 출처 표기: LLM 준수 여부와 무관하게 코드가 보장한다 (모든 답변 필수 규정)
+    sources = _collect_sources(doc_hits, hits, calc_notes)
+    if sources:
+        answer_text += "\n\n근거: " + " / ".join(sources)
+
     return _respond(question_id, question,
                     "\n\n---\n\n".join(context_blocks), trace, answer_text)
+
+
+def _collect_sources(doc_hits, fund_hits, calc_notes) -> list[str]:
+    """답변 꼬리에 붙일 근거 표기. 문서는 제목·위치까지, 펀드는 설명서 페이지까지."""
+    out, seen = [], set()
+    for h in doc_hits or []:
+        if h["doc_id"] in seen:
+            continue
+        seen.add(h["doc_id"])
+        out.append(f"{h['doc_id']}({h['title']}) {h['marker']}")
+    for f in fund_hits or []:
+        src = f.get("source", {})
+        out.append(f"{src.get('file')} p{src.get('summary_page')}")
+    # 계산 근거 doc는 calc_notes 문자열 끝의 "(근거: docN)" 표기에서 수집
+    for note in calc_notes:
+        m = re.search(r"\(근거:\s*([^)]+)\)", note)
+        if m and m.group(1) not in seen:
+            seen.add(m.group(1))
+            out.append(f"{m.group(1)}(계산 근거)")
+    return out[:8]
 
 
 def _respond(qid: str, q: str, ctx: str, trace: list[str], ans: str) -> dict:
