@@ -32,7 +32,7 @@ Q&A로 확정된 설계 전제: **평가는 싱글턴 호출**(멀티턴 API 불
 ### 연성 (연결·설명 담당)
 1. **HCX 실연동** — `agent/llm.py` 교체 지점에 키 연결, 프롬프트 다듬기, 5개 참고 질의로 답변 품질 1차 확인
 2. **⚠️ Verifier(self-check)** — 답변의 수치·주장이 retrieved_context에 실제로 있는지 HCX로 재검증, 없으면 삭제/한계고지로 교체. 발표 기준 "검증 실패 = 금융권 최악 실패 유형(23.5%)"
-3. 답변 출처 표기 포맷 통일 ("근거: doc41(제목) p2" — 모든 답변 필수 규정)
+3. ✅ 답변 출처 자동 표기 구현됨(2026-08-07) — 코드가 답변 꼬리에 근거 목록을 강제 부착
 
 ### 승빈 (판단·계산 담당)
 1. **세제 계산기 4종** (순서대로): 연금수령한도(doc39) → 중도인출 세금(doc20·46~50) → 종합과세 비교(doc38) → ISA 전환 공제(doc23). 규칙은 반드시 원문 확인, 함수마다 검증 문항 1개 추가
@@ -75,5 +75,5 @@ Q&A로 확정된 설계 전제: **평가는 싱글턴 호출**(멀티턴 API 불
 
 1. GitHub 초대 수락 → `gh repo clone for-romanxe/miraeasset && cd miraeasset`
 2. `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
-3. `.venv/bin/python eval/run_eval.py` → 105/105 확인
+3. `.venv/bin/python eval/run_eval.py` → 116/116 확인
 4. 석규는 `eval/build_evalset.py`의 MANUAL 리스트, 승빈은 `agent/pipeline/calculator.py` 구조부터 파악
