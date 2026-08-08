@@ -49,7 +49,7 @@ Q&A로 확정된 설계 전제: **평가는 싱글턴 호출**(멀티턴 API 불
 | 담당 | 할 일 |
 |---|---|
 | 연성 | 검색 하이브리드화 (임베딩 허용 답변에 따라 CLOVA 임베딩 or 로컬 오픈소스) |
-| 연성+석규 | LLM 채점 추가 — 지금은 검색·분기만 채점, 답변 문장 품질도 자동 채점 (HCX judge) |
+| 연성+석규 | LLM 채점 추가 — ✅ 뼈대 구현(`eval/llm_judge.py`, 4축 루브릭·드라이런 확인). 키 수령 후 실채점 + 루브릭 보정 |
 | 승빈 | 전제 교정 로직 (질문 속 틀린 수치를 근거와 대조해 교정) + 가드레일 오탐/미탐 정리 |
 | 석규 | doc29 '유사질문표현' 나머지 활용, 평가셋 150문항+ |
 
@@ -58,7 +58,7 @@ Q&A로 확정된 설계 전제: **평가는 싱글턴 호출**(멀티턴 API 불
 | 담당 | 할 일 |
 |---|---|
 | 연성 | NCP 배포 (VPC→서브넷→서버→ACG, 절차는 BRIEFING 세션1) + `/health` 모니터링 |
-| 연성 | Dockerfile · requirements · README 실행법 · API 명세서(JSON 스키마) |
+| 연성 | Dockerfile · requirements · README 실행법 · API 명세서 — ✅ 완료(`Dockerfile`, `scripts/deploy.sh`, `docs/API.md`). 남은 건 NCP 서버에서 실빌드 확인뿐 |
 | 석규 | **기술제안서** — 발표 용어 프레임 사용("명세 기반 오케스트레이션", "Clarify vs Assume+Expose", "Iterative disambiguation"). ARCHITECTURE.md·커밋 히스토리가 재료 |
 | 연성 | 주최측 Org 레포에 제출 (수집용 — 커밋 히스토리 확인 가능하게), 평가 기간 서버 유지 |
 | 연성 | 평가 종료 후 **9/30 전 NCP 리소스 전부 삭제** (크레딧 초과분 미보전) |
