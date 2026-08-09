@@ -6,7 +6,7 @@ LLM 프롬프트는 근거 밖 내용 생성 금지·근거 표시를 강제한�
 from __future__ import annotations
 
 from ..llm import get_llm
-from .router import SLOT_QUESTIONS, Route
+from .router import SLOT_ASSUMPTIONS, SLOT_QUESTIONS, Route
 
 SYSTEM_RULES = """당신은 미래에셋증권 연금 상담 Agent입니다. 규칙:
 1. 아래 [근거]에 있는 내용만으로 답하십시오. 근거에 없는 수치·사실을 만들지 마십시오.
@@ -24,6 +24,10 @@ def clarification_answer(route: Route) -> str:
             "알려주시면 조건에 맞는 상품 유형과 확인 포인트를 안내해 드리겠습니다. "
             "특정 상품의 단정적 추천은 드리지 않으며, 투자 판단은 투자설명서를 확인하신 뒤 "
             "본인 책임 하에 이루어져야 합니다.")
+
+
+def assumption_disclosure(route: Route) -> str:
+    return " ".join(SLOT_ASSUMPTIONS[slot][1] for slot in route.assumptions)
 
 
 def limitation_answer() -> str:
