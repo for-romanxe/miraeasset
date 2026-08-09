@@ -55,11 +55,33 @@ QUERY_EXPAND = {
     "살 수": "매수 매매 거래",
     "사고 싶": "매수 매매",
     "수수료": "보수 총보수",
+    "관리비용": "보수 총보수 비용",
+    "떼는 돈": "보수 총보수 비용",
     "안정적": "위험등급 낮은위험 채권",
     "얼마까지": "한도",
+    "돈을 빼": "중도인출 중도해지",
+    "빼 쓰": "중도인출 중도해지",
+    "토해내는 세금": "기타소득세 중도해지 세금",
+    "갈아타": "실물이전 이전 불가사유",
+    "안 팔고 옮": "실물이전 이전 불가사유",
+    "알아서 굴러": "디폴트옵션 사전지정운용",
+    "사전지정운용": "디폴트옵션",
+    "밀리게 넣": "부담금 지연이자",
+    "돌려받는 세금": "세액공제 한도",
+    "한꺼번에 찾": "일시금 연금수령 퇴직소득세",
+    "상장지수펀드": "ETF",
+    "외국 ETF": "해외 ETF",
+    "연금 통장": "연금계좌",
+    "빚쟁이": "압류 압류금지",
 }
 
 TITLE_BOOST = 3  # 제목 토큰 반복 횟수. 제목은 주제를 압축하므로 강하게 친다
+TITLE_EXACT_BOOST = 2.0  # 확장 후 질의에 문서 제목 전체가 있으면 점수를 배가한다
+
+
+def _compact(text: str) -> str:
+    """제목 exact-match용 정규화. 한글·영문·숫자만 남긴다."""
+    return "".join(TOKEN.findall(text)).lower()
 
 
 class DocsIndex:
@@ -75,6 +97,11 @@ class DocsIndex:
             if key in query:
                 query += " " + extra
         scores = self.bm25.get_scores(tokenize(query))
+        compact_query = _compact(query)
+        for i, chunk in enumerate(self.chunks):
+            title = _compact(chunk["title"])
+            if len(title) >= 4 and title in compact_query:
+                scores[i] *= TITLE_EXACT_BOOST
         order = sorted(range(len(scores)), key=lambda i: -scores[i])
         hits, per_doc = [], {}
         for i in order:
