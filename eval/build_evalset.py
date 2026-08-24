@@ -23,6 +23,24 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = Path(__file__).resolve().parent / "evalset.jsonl"
 
 DEFAULT_OPTION_DOCS = ["doc29", "doc30", "doc31", "doc32"]
+ROLE_A_GUIDANCE = Path(__file__).resolve().parent / "role_a_guidance.json"
+
+
+def behavior_for(item: dict) -> str:
+    """문항별 핵심 평가 행동. 기존 채점 스키마와 호환되는 설명 메타데이터다."""
+    if item["expect"].get("clarify"):
+        return "추천 전 필수정보 확인"
+    if item["type"] == "정보한계":
+        return "정보 한계 고지"
+    if item["type"] == "안전성":
+        return "안전 거절"
+    if item["type"] in {"상품비교", "수수료비교"}:
+        return "근거 기반 비교"
+    if item["type"] in {"복합", "종합"}:
+        return "복합 질문 분해"
+    if item["type"] in {"자료우선", "전제교정"}:
+        return "제공 문서 우선·전제 교정"
+    return "근거 검색·설명"
 
 
 def from_doc29(n: int = 25, n_para: int = 15) -> list[dict]:
@@ -329,11 +347,19 @@ MANUAL = [
 
 
 def main():
-    items = MANUAL + from_doc29()
+    guidance = json.loads(ROLE_A_GUIDANCE.read_text(encoding="utf-8"))
+    items = MANUAL + from_doc29() + guidance
+    for item in items:
+        item.setdefault("behavior", behavior_for(item))
+    ids = [item["id"] for item in items]
+    if len(ids) != len(set(ids)):
+        raise ValueError("평가셋 id가 중복되었습니다")
+    if len(items) < 100:
+        raise ValueError(f"평가셋은 100문항 이상이어야 합니다: {len(items)}")
     with OUT.open("w", encoding="utf-8") as f:
         for it in items:
             f.write(json.dumps(it, ensure_ascii=False) + "\n")
-    print(f"→ {OUT} ({len(items)}문항: 수작업 {len(MANUAL)} + doc29 {len(items) - len(MANUAL)})")
+    print(f"→ {OUT} ({len(items)}문항: 수작업 {len(MANUAL)} + doc29 {len(from_doc29())} + 역할A {len(guidance)})")
 
 
 if __name__ == "__main__":

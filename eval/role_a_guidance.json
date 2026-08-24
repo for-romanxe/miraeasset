@@ -1,0 +1,594 @@
+[
+  {
+    "id": "src-3",
+    "type": "자료우선",
+    "difficulty": "상",
+    "question": "검색 결과 말고 주어진 안내문서만 근거로 DB형과 DC형의 급여 산정 방식을 비교해 주세요.",
+    "expect": {
+      "docs": [
+        "doc11",
+        "doc15",
+        "doc13"
+      ]
+    }
+  },
+  {
+    "id": "src-4",
+    "type": "자료우선",
+    "difficulty": "상",
+    "question": "외부 사이트 설명은 빼고 제공된 자료에 적힌 디폴트옵션 지정 절차를 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc29",
+        "doc30",
+        "doc31",
+        "doc32"
+      ]
+    }
+  },
+  {
+    "id": "src-5",
+    "type": "전제교정",
+    "difficulty": "상",
+    "question": "DC도 회사가 운용해서 손실을 책임지는 제도 맞죠? 제공 자료를 근거로 바로잡아 주세요.",
+    "expect": {
+      "docs": [
+        "doc11",
+        "doc15",
+        "doc13"
+      ]
+    }
+  },
+  {
+    "id": "src-6",
+    "type": "전제교정",
+    "difficulty": "상",
+    "question": "DB는 회사 사정이 나쁘면 약속한 퇴직급여를 줄여도 되는 거죠? DB의 급여와 운용 책임을 설명해 주세요.",
+    "expect": {
+      "docs": [
+        "doc11",
+        "doc15",
+        "doc13"
+      ]
+    }
+  },
+  {
+    "id": "rec-10",
+    "type": "조건부추천",
+    "difficulty": "중",
+    "question": "퇴직금 굴릴 상품 추천해 주세요.",
+    "expect": {
+      "clarify": true
+    }
+  },
+  {
+    "id": "rec-4",
+    "type": "조건부추천",
+    "difficulty": "중",
+    "question": "요즘 잘 나가는 ETF를 제 연금용으로 추천해 주세요.",
+    "expect": {
+      "clarify": true
+    }
+  },
+  {
+    "id": "rec-5",
+    "type": "조건부추천",
+    "difficulty": "중",
+    "question": "안전한 펀드 추천해 주세요.",
+    "expect": {
+      "clarify": true
+    }
+  },
+  {
+    "id": "rec-6",
+    "type": "조건부추천",
+    "difficulty": "상",
+    "question": "IRP에서 살 만한 상품 하나 추천해 주세요.",
+    "expect": {
+      "clarify": true
+    }
+  },
+  {
+    "id": "rec-7",
+    "type": "조건부추천",
+    "difficulty": "상",
+    "question": "은퇴까지 2년 남았는데 연금 상품 추천해 주세요.",
+    "expect": {
+      "clarify": true
+    }
+  },
+  {
+    "id": "rec-8",
+    "type": "조건부추천",
+    "difficulty": "중",
+    "question": "공격적으로 투자하고 싶은데 펀드 하나 골라 주세요.",
+    "expect": {
+      "clarify": true
+    }
+  },
+  {
+    "id": "rec-9",
+    "type": "조건부추천",
+    "difficulty": "중",
+    "question": "수수료 싼 연금 상품을 추천해 주세요.",
+    "expect": {
+      "clarify": true
+    }
+  },
+  {
+    "id": "fee-1",
+    "type": "수수료비교",
+    "difficulty": "중",
+    "question": "솔로몬 국공채 단기형, 중장기형, 장기형의 총보수와 위험등급을 근거와 함께 비교해 주세요.",
+    "expect": {
+      "isins": [
+        "KR5153420063",
+        "KR5153420079",
+        "KR5153420105"
+      ]
+    }
+  },
+  {
+    "id": "fee-2",
+    "type": "상품설명",
+    "difficulty": "중",
+    "question": "미래에셋장기성장포커스에서 떼는 관리비용과 1년 수익률, 위험 수준을 출처와 같이 알려주세요.",
+    "expect": {
+      "isins": [
+        "KR510902511M"
+      ]
+    }
+  },
+  {
+    "id": "fee-3",
+    "type": "상품비교",
+    "difficulty": "상",
+    "question": "솔로몬 국공채 세 상품을 기간, 위험등급, 총보수 기준으로 나눠 설명해 주세요. 낮은 보수만으로 단정하지 마세요.",
+    "expect": {
+      "isins": [
+        "KR5153420063",
+        "KR5153420079",
+        "KR5153420105"
+      ]
+    }
+  },
+  {
+    "id": "multi-1",
+    "type": "복합",
+    "difficulty": "상",
+    "question": "DB와 DC 차이를 설명하고, DC 부담금이 늦게 들어오면 지연이자도 받을 수 있는지 각각 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc11",
+        "doc15",
+        "doc17"
+      ]
+    }
+  },
+  {
+    "id": "multi-2",
+    "type": "복합",
+    "difficulty": "상",
+    "question": "IRP 가입 대상, 중간에 깨면 내는 세금, 연금으로 받을 때 절세 효과를 항목별로 설명해 주세요.",
+    "expect": {
+      "docs": [
+        "doc14",
+        "doc20",
+        "doc5",
+        "doc51"
+      ]
+    }
+  },
+  {
+    "id": "multi-3",
+    "type": "복합",
+    "difficulty": "상",
+    "question": "연금저축과 IRP 세액공제 한도를 비교하고, 한도를 넘겨 납입할 때 장점도 따로 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc41",
+        "doc44"
+      ]
+    }
+  },
+  {
+    "id": "multi-4",
+    "type": "복합",
+    "difficulty": "상",
+    "question": "퇴직연금에서 ETF를 살 수 있는지와 적립금 100% 투자가 가능한 상품을 구분해서 설명해 주세요.",
+    "expect": {
+      "docs": [
+        "doc53",
+        "doc56",
+        "doc58"
+      ]
+    }
+  },
+  {
+    "id": "multi-5",
+    "type": "복합",
+    "difficulty": "상",
+    "question": "ISA 만기 돈을 연금계좌로 옮기는 절차와 추가 세제 혜택을 나눠서 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc23",
+        "doc33",
+        "doc4"
+      ]
+    }
+  },
+  {
+    "id": "multi-6",
+    "type": "복합",
+    "difficulty": "상",
+    "question": "무주택자 주택 구입 때 퇴직연금 돈을 빼 쓸 수 있는지, 계좌 해지와 세금 차이까지 설명해 주세요.",
+    "expect": {
+      "docs": [
+        "doc46",
+        "doc47",
+        "doc48",
+        "doc49",
+        "doc50",
+        "doc5",
+        "doc20",
+        "doc22"
+      ]
+    }
+  },
+  {
+    "id": "multi-7",
+    "type": "복합",
+    "difficulty": "상",
+    "question": "연금 수령 한도 계산법과 한도를 넘겨 받은 금액의 과세 방식을 각각 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc38",
+        "doc39",
+        "doc40"
+      ]
+    }
+  },
+  {
+    "id": "multi-8",
+    "type": "복합",
+    "difficulty": "상",
+    "question": "퇴직연금 실물이전이 뭔지, 옮길 수 없는 경우는 무엇인지 함께 설명해 주세요.",
+    "expect": {
+      "docs": [
+        "doc34",
+        "doc35"
+      ]
+    }
+  },
+  {
+    "id": "para-1",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "IRP 돈을 중간에 빼 쓰면 세금 폭탄 맞나요?",
+    "expect": {
+      "docs": [
+        "doc20",
+        "doc5"
+      ]
+    }
+  },
+  {
+    "id": "para-2",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "연금 계좌를 깨려고 하는데 토해내는 세금이 있나요?",
+    "expect": {
+      "docs": [
+        "doc20",
+        "doc5"
+      ]
+    }
+  },
+  {
+    "id": "para-3",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "퇴직연금 회사를 갈아타도 들고 있는 상품을 안 팔고 옮길 수 있나요?",
+    "expect": {
+      "docs": [
+        "doc34",
+        "doc35"
+      ]
+    }
+  },
+  {
+    "id": "para-4",
+    "type": "제도",
+    "difficulty": "중",
+    "question": "아무 지시 안 하면 퇴직연금 돈이 알아서 굴러가는 사전지정운용제도가 뭔가요?",
+    "expect": {
+      "docs": [
+        "doc29",
+        "doc30",
+        "doc31",
+        "doc32"
+      ]
+    }
+  },
+  {
+    "id": "para-5",
+    "type": "제도",
+    "difficulty": "중",
+    "question": "회사가 DC 돈을 밀리게 넣으면 이자를 더 줘야 하나요?",
+    "expect": {
+      "docs": [
+        "doc17"
+      ]
+    }
+  },
+  {
+    "id": "para-6",
+    "type": "제도",
+    "difficulty": "중",
+    "question": "빚쟁이가 제 퇴직연금을 가져갈 수 있나요?",
+    "expect": {
+      "docs": [
+        "doc16"
+      ]
+    }
+  },
+  {
+    "id": "para-7",
+    "type": "세제",
+    "difficulty": "중",
+    "question": "연금저축이랑 개인형 퇴직연금에 넣어서 돌려받는 세금 혜택 상한이 얼마예요?",
+    "expect": {
+      "docs": [
+        "doc41"
+      ]
+    }
+  },
+  {
+    "id": "para-8",
+    "type": "세제",
+    "difficulty": "중",
+    "question": "퇴직금을 한꺼번에 찾는 것보다 나눠 받으면 세금을 덜 내나요?",
+    "expect": {
+      "docs": [
+        "doc51",
+        "doc52"
+      ]
+    }
+  },
+  {
+    "id": "para-9",
+    "type": "상품",
+    "difficulty": "중",
+    "question": "IRP에서 상장지수펀드를 사고팔 수 있어요?",
+    "expect": {
+      "docs": [
+        "doc53",
+        "doc56"
+      ]
+    }
+  },
+  {
+    "id": "para-10",
+    "type": "세제",
+    "difficulty": "중",
+    "question": "연금계좌에서 외국 ETF 굴리면 일반 통장보다 절세되나요?",
+    "expect": {
+      "docs": [
+        "doc42"
+      ]
+    }
+  },
+  {
+    "id": "para-11",
+    "type": "세제",
+    "difficulty": "중",
+    "question": "월마다 배당 주는 ETF를 연금 통장에서 사면 세금이 어떻게 돼요?",
+    "expect": {
+      "docs": [
+        "doc43"
+      ]
+    }
+  },
+  {
+    "id": "para-12",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "만기 된 ISA 목돈을 연금저축으로 넘기고 싶어요. 어떻게 하나요?",
+    "expect": {
+      "docs": [
+        "doc23",
+        "doc33",
+        "doc4"
+      ]
+    }
+  },
+  {
+    "id": "cov-1",
+    "type": "상품",
+    "difficulty": "중",
+    "question": "퇴직연금 계좌에서 장외채권을 매수하는 방법과 유의사항을 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc7"
+      ]
+    }
+  },
+  {
+    "id": "cov-2",
+    "type": "상품",
+    "difficulty": "중",
+    "question": "연금저축계좌에서 상장 인프라펀드를 매매할 때 자주 묻는 내용을 설명해 주세요.",
+    "expect": {
+      "docs": [
+        "doc8"
+      ]
+    }
+  },
+  {
+    "id": "cov-3",
+    "type": "상품",
+    "difficulty": "중",
+    "question": "연금저축계좌 주식 적립식 서비스는 어떻게 이용하나요?",
+    "expect": {
+      "docs": [
+        "doc9"
+      ]
+    }
+  },
+  {
+    "id": "cov-4",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "퇴직연금 부담금 입금 업무 절차와 확인사항을 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc6"
+      ]
+    }
+  },
+  {
+    "id": "cov-5",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "IRP에서 연금을 신청하고 지급받는 절차를 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc21",
+        "doc2"
+      ]
+    }
+  },
+  {
+    "id": "cov-6",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "퇴직연금 계좌로 유상청약을 모바일에서 하는 방법이 있나요?",
+    "expect": {
+      "docs": [
+        "doc24"
+      ]
+    }
+  },
+  {
+    "id": "cov-7",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "홈페이지나 모바일에서 퇴직연금 운용방법을 변경하는 절차를 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc28",
+        "doc27"
+      ]
+    }
+  },
+  {
+    "id": "cov-8",
+    "type": "절차",
+    "difficulty": "상",
+    "question": "회사가 폐업한 경우 퇴직급여를 직접 청구하는 과정이 궁금합니다.",
+    "expect": {
+      "docs": [
+        "doc57"
+      ]
+    }
+  },
+  {
+    "id": "cov-9",
+    "type": "상품",
+    "difficulty": "중",
+    "question": "퇴직연금 MP 구독 서비스의 가입과 운용 관련 FAQ를 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc54"
+      ]
+    }
+  },
+  {
+    "id": "cov-10",
+    "type": "세제",
+    "difficulty": "중",
+    "question": "연금계좌의 과세이연 효과를 일반계좌와 비교해 설명해 주세요.",
+    "expect": {
+      "docs": [
+        "doc36"
+      ]
+    }
+  },
+  {
+    "id": "cov-11",
+    "type": "세제",
+    "difficulty": "중",
+    "question": "예전에 가입한 개인연금저축의 절세 혜택은 무엇인가요?",
+    "expect": {
+      "docs": [
+        "doc25"
+      ]
+    }
+  },
+  {
+    "id": "cov-12",
+    "type": "절차",
+    "difficulty": "중",
+    "question": "연금계좌에서 증권담보융자를 이용할 수 있는지 업무 기준을 알려주세요.",
+    "expect": {
+      "docs": [
+        "doc3"
+      ]
+    }
+  },
+  {
+    "id": "cov-13",
+    "type": "제도",
+    "difficulty": "중",
+    "question": "퇴직급여 제도를 DB에서 DC로 바꾸는 경우 무엇을 확인해야 하나요?",
+    "expect": {
+      "docs": [
+        "doc13"
+      ]
+    }
+  },
+  {
+    "id": "cov-14",
+    "type": "세제",
+    "difficulty": "상",
+    "question": "DC와 IRP에 들어온 돈의 과세 재원을 어떻게 구분하고 확정하나요?",
+    "expect": {
+      "docs": [
+        "doc19"
+      ]
+    }
+  },
+  {
+    "id": "cov-15",
+    "type": "제도",
+    "difficulty": "중",
+    "question": "연금 인출 순서와 수령 단계에서 확인할 사항을 안내해 주세요.",
+    "expect": {
+      "docs": [
+        "doc37"
+      ]
+    }
+  },
+  {
+    "id": "cov-16",
+    "type": "업무",
+    "difficulty": "상",
+    "question": "퇴직연금 업무를 처리할 때 실무 체크 포인트를 근거와 함께 정리해 주세요.",
+    "expect": {
+      "docs": [
+        "doc55"
+      ]
+    }
+  },
+  {
+    "id": "cov-17",
+    "type": "세제",
+    "difficulty": "상",
+    "question": "공무원이나 교사가 받은 명예퇴직수당을 연금계좌에 넣을 때 절세 구조를 설명해 주세요.",
+    "expect": {
+      "docs": [
+        "doc26"
+      ]
+    }
+  }
+]

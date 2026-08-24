@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -64,6 +64,10 @@ def main():
     print(f"== 총점 {total_ok}/{len(items)} ({total_ok / len(items):.0%})")
     for t, (ok, n) in sorted(by_type.items()):
         print(f"   {t:12s} {ok}/{n}")
+    print("\n== 평가셋 분포")
+    for field in ("difficulty", "behavior"):
+        counts = Counter(it.get(field, "미분류") for it in items)
+        print(f"   {field}: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
     if failures:
         print(f"\n== 실패 {len(failures)}건")
         for it, fails, resp in failures:
