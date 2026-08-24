@@ -90,6 +90,11 @@ class DocsIndex:
         self.bm25 = BM25Okapi([
             tokenize(c["text"]) + tokenize(c["title"]) * TITLE_BOOST
             for c in self.chunks])
+        # 제목 정규화는 질의와 무관하다. 매 검색마다 431개를 다시 만들 이유가 없어
+        # 인덱스 생성 시 한 번만 계산한다. 4자 미만은 우연 일치가 많아 제외한다.
+        self.compact_titles = [
+            (i, t) for i, t in enumerate(_compact(c["title"]) for c in self.chunks)
+            if len(t) >= 4]
 
     def search(self, query: str, k: int = 5, topics: list[str] | None = None,
                max_per_doc: int = 2) -> list[dict]:
@@ -98,9 +103,8 @@ class DocsIndex:
                 query += " " + extra
         scores = self.bm25.get_scores(tokenize(query))
         compact_query = _compact(query)
-        for i, chunk in enumerate(self.chunks):
-            title = _compact(chunk["title"])
-            if len(title) >= 4 and title in compact_query:
+        for i, title in self.compact_titles:
+            if title in compact_query:
                 scores[i] *= TITLE_EXACT_BOOST
         order = sorted(range(len(scores)), key=lambda i: -scores[i])
         hits, per_doc = [], {}
