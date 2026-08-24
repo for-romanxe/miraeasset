@@ -29,6 +29,10 @@ from ..llm import get_llm
 NUM = re.compile(r"\d[\d,]*\.\d+%?|\d[\d,]{1,}%?|\d%")
 
 _SENT_END = re.compile(r"(?<=[.!?])\s+")
+# 번호 목록 마커("1. ", "2) ")를 문장 끝으로 오인해 "1."과 본문을 분리하면
+# 안 된다 — sys-1 실측에서 4항목짜리 목록이 마커만 8개의 빈 "문장"으로
+# 쪼개져 전부 미지지 처리됐다 (검증 로직이 아니라 분리 단계의 버그였다).
+_LIST_MARKER = re.compile(r"^(?:\d+[.)]|[-*·•])\s*")
 
 
 def _normalize(text: str) -> str:
@@ -68,6 +72,7 @@ def _split_sentences(text: str) -> list[str]:
         line = line.strip()
         if line.startswith("근거:") or line.startswith("※"):
             continue  # 출처 표기·재확인 안내 줄은 주장이 아니라 검증 대상이 아님
+        line = _LIST_MARKER.sub("", line, count=1)
         for s in _SENT_END.split(line):
             s = s.strip(" -*·")
             if s:
@@ -103,24 +108,34 @@ def verify_numbers(answer: str, context_blocks: list[str],
 
 # 근거에 문자 그대로 있는 수치라도 "무엇에 대한 값인가"가 틀리면 1단계로는
 # 못 잡는다 (1,500만원=수령 종합과세 기준 vs 납입 한도). 문장 단위로 근거와
-# 다시 대조해 이 유형을 잡는다. findings를 먼저 요구하지 않고 번호만 받는 건
-# 이 검증이 채점(judge)이 아니라 이진 판정이라 그럴 필요가 없어서다 — 다만
-# "정당한 유도 산술은 지지로 본다"는 조건은 명시해야 tax-17 같은 오탐이 재발한다.
+# 다시 대조해 이 유형을 잡는다.
+#
+# 처음에는 미지지 번호만 바로 답하게 했더니, 근거와 실제로 어긋나지 않는데도
+# 두 개의 비슷한 금액(1,500만원/1,800만원)이 같은 답변에 나온다는 이유만으로
+# 둘 중 하나를 거의 매번(5/5) 미지지로 찍었다 — 근거 없이 "의심스러워 보이는"
+# 문장을 지어내는 패턴 매칭이었다. llm_judge.py가 겪은 것과 같은 함정
+# (점수부터 찍고 근거를 사후에 짜맞춤)이라, 같은 해법을 썼다: 각 문장마다
+# 뒷받침 근거를 먼저 인용하게 하고, 인용을 못 하면 그때만 미지지로 확정한다.
 CLAIM_VERIFY_PROMPT = """당신은 사실 검증관입니다. [근거]와 [계산 결과]를 보고
 [답변] 문장들이 지지되는지 판정하세요.
 
-지지(O)로 판정:
-- 문장의 사실·수치가 [근거]나 [계산 결과]에 그대로 있음
-- [근거]에 있는 두 수치의 합·차로 자연스럽게 유도됨
-- 특정 사실·수치를 새로 주장하지 않는 연결·설명 문장
+문장마다 다음 순서로 판단하세요:
+1. 이 문장의 사실·수치를 직접 뒷받침하는 [근거]나 [계산 결과]의 문구를 그대로
+   옮겨 적으세요 (quote). 뒷받침하는 문구가 없으면 quote를 빈 문자열로 두세요.
+2. quote를 옮겨 적었다면, 그 quote가 문장과 같은 대상·기준(무엇에 대한
+   값인지)을 말하는지 확인하세요. 같은 대상·기준이면 지지(O), 다른
+   대상·기준에 수치만 갖다 붙였다면 미지지(X)입니다.
+3. quote가 없으면 무조건 미지지(X)입니다. [근거]에 있는 두 수치의 합·차로
+   자연스럽게 유도되는 문장, 또는 특정 사실·수치를 새로 주장하지 않는
+   연결·설명 문장은 quote 없이도 지지(O)로 판정하세요.
+4. 근거에 있는 조건·예외를 문장에서 생략한 것은 오류가 아닙니다. 문장이 말한
+   내용 자체가 근거와 어긋나지 않으면 지지(O)입니다.
 
-미지지(X)로 판정:
-- [근거]·[계산 결과] 어디에도 없는 수치·사실을 단정함
-- 수치 자체는 [근거]에 있지만, 그 수치가 실제로 가리키는 대상·기준과
-  문장의 주장이 다름 (예: 근거의 "수령 시 기준"을 "납입 한도"로 서술)
+quote를 실제로 찾지 못했으면서 지지로 판정하지 마세요 — 짐작으로 의심하지도
+마세요. quote가 있으면 원칙적으로 지지입니다.
 
-문장마다 번호가 매겨져 있습니다. 미지지 문장 번호만 JSON 배열로 답하세요.
-모두 지지되면 []. 문장을 옮겨 적지 말고 번호만 쓰세요.
+반드시 아래 JSON 형식으로, 문장 번호 순서대로 모두 답하세요:
+{{"checks": [{{"n": 0, "quote": "<근거 문구 또는 빈 문자열>", "verdict": "O 또는 X"}}, ...]}}
 
 [근거]
 {context}
@@ -129,19 +144,21 @@ CLAIM_VERIFY_PROMPT = """당신은 사실 검증관입니다. [근거]와 [계�
 {calc}
 
 [답변 — 번호별 문장]
-{numbered}
-
-[답변] 미지지 문장 번호의 JSON 배열만 출력. 예: [2, 5]"""
+{numbered}"""
 
 
 def _parse_indices(raw: str) -> list[int]:
-    m = re.search(r"\[[\d,\s]*\]", raw)
+    """checks 배열에서 verdict가 X인 문장 번호만 뽑는다."""
+    m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m:
         return []
     try:
-        return [int(x) for x in json.loads(m.group())]
-    except (json.JSONDecodeError, ValueError):
+        checks = json.loads(m.group()).get("checks", [])
+    except json.JSONDecodeError:
         return []
+    return [c["n"] for c in checks
+           if isinstance(c, dict) and str(c.get("verdict", "")).strip().upper().startswith("X")
+           and isinstance(c.get("n"), int)]
 
 
 def verify_claims_llm(answer: str, context_blocks: list[str], calc_notes: list[str],
@@ -169,7 +186,8 @@ def verify_claims_llm(answer: str, context_blocks: list[str], calc_notes: list[s
     ctx = "\n\n---\n\n".join(context_blocks)[:4000] if context_blocks else "(근거 없음)"
     calc = "\n".join(calc_notes) if calc_notes else "(없음)"
     prompt = CLAIM_VERIFY_PROMPT.format(context=ctx, calc=calc, numbered=numbered)
-    raw = llm.generate(prompt, max_tokens=200)
+    # quote를 문장마다 받으므로 번호만 받을 때보다 토큰이 더 든다.
+    raw = llm.generate(prompt, max_tokens=120 + 80 * len(targets))
     bad = [sentences[i] for i in _parse_indices(raw) if 0 <= i < len(sentences)]
     trace = (f"[검증2] {scope} 범위 {len(targets)}문장 검증, 미지지 {len(bad)}건"
              + (f": {bad[0][:60]}" if bad else ""))

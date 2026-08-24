@@ -57,6 +57,17 @@ class SentenceSplitTest(unittest.TestCase):
         self.assertEqual(len(sentences), 3)
         self.assertTrue(sentences[2].startswith("세액공제"))
 
+    def test_numbered_list_marker_not_split_off(self):
+        """sys-1 실측 버그 — "1. 문장"이 "1."과 "문장"으로 쪼개지면 안 된다."""
+        text = "IRP는 다음이 가입할 수 있습니다:\n1. 자영업자\n2. DC 가입자"
+        sentences = verifier._split_sentences(text)
+        self.assertEqual(sentences, ["IRP는 다음이 가입할 수 있습니다:", "자영업자", "DC 가입자"])
+
+    def test_parenthesis_list_marker_not_split_off(self):
+        text = "1) 첫째 조건\n2) 둘째 조건"
+        sentences = verifier._split_sentences(text)
+        self.assertEqual(sentences, ["첫째 조건", "둘째 조건"])
+
     def test_source_line_dropped(self):
         sentences = verifier._split_sentences("답변입니다.\n\n근거: doc41(연금저축) 본문")
         self.assertEqual(sentences, ["답변입니다."])

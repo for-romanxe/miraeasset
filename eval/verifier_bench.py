@@ -21,11 +21,19 @@ import sys
 import time
 from pathlib import Path
 
+import requests
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from agent import llm, pipeline  # noqa: E402
 from agent.pipeline import verifier  # noqa: E402
 
 EVALSET = Path(__file__).resolve().parent / "evalset.jsonl"
+
+# llm_judge.py와 같은 이유로 같은 페이스를 쓴다 — 계정 한도가 공유라 문항
+# 사이를 띄우지 않으면 429가 난다 (실측: 15문항을 페이스 없이 돌리다 11번째에서
+# 걸림, llm_judge.py --twice와 동시에 실행 중이었음).
+PACE_SEC = 8.0
+RATE_RELIEF_SEC = 65.0
 
 # #43 이슈에 명시된 핵심 재현 케이스. 실제 문서 근거를 그대로 썼다 —
 # 1,500만원(doc38, 수령 종합과세 기준)과 1,800만원(doc41·doc44, 납입 한도)이
@@ -53,9 +61,20 @@ def _bench_one(judge_llm, case_id: str, answer: str, context: list, calc: list) 
     row = {"id": case_id}
     for scope in ("numeric", "all"):
         t0 = time.monotonic()
-        bad, trace = verifier.verify_claims_llm(answer, context, calc, scope=scope)
+        for attempt in range(2):
+            try:
+                bad, trace = verifier.verify_claims_llm(answer, context, calc, scope=scope)
+                break
+            except requests.HTTPError as e:
+                status = e.response.status_code if e.response is not None else None
+                if attempt == 0 and status == 429:
+                    print(f"    ({case_id}/{scope} 429 — {RATE_RELIEF_SEC:.0f}초 대기)")
+                    time.sleep(RATE_RELIEF_SEC)
+                    continue
+                raise
         row[scope] = {"sec": round(time.monotonic() - t0, 2),
                       "flagged": len(bad), "trace": trace}
+        time.sleep(PACE_SEC)
     return row
 
 
@@ -87,14 +106,30 @@ def main():
         print(f"\n== evalset 앞 {n}문항 ==")
         items = [json.loads(l) for l in EVALSET.read_text(encoding="utf-8").splitlines() if l][:n]
         for it in items:
-            resp = pipeline.answer(it["id"], it["question"])
+            try:
+                resp = pipeline.answer(it["id"], it["question"])
+            except requests.HTTPError as e:
+                if e.response is not None and e.response.status_code == 429:
+                    print(f"  {it['id']:12s} 429 — {RATE_RELIEF_SEC:.0f}초 대기 후 재시도")
+                    time.sleep(RATE_RELIEF_SEC)
+                    resp = pipeline.answer(it["id"], it["question"])
+                else:
+                    raise
+            if not resp["retrieved_context"]:
+                # 근거 없이 답하는 분기(거절·한계고지·역질문)는 실제 파이프라인에서
+                # apply()를 아예 안 거친다 — pipeline/__init__.py가 verifier 호출
+                # 전에 일찍 return한다. 여기서 억지로 검증하면 문장 전부가
+                # "근거 없음"으로 미지지 처리돼 벤치마크 결과가 왜곡된다 (ref-5 실측:
+                # all 5건 전부 이 이유로 오탐처럼 보였음 — 실제 버그 아님).
+                print(f"  {it['id']:12s} 근거 없음(거절/한계고지/역질문) — 검증 대상 아님, 건너뜀")
+                continue
             row = _bench_one(judge, it["id"], resp["answer"],
-                             resp["retrieved_context"].split("\n\n---\n\n")
-                             if resp["retrieved_context"] else [], [])
+                             resp["retrieved_context"].split("\n\n---\n\n"), [])
             results.append(row)
             print(f"  {it['id']:12s} "
                  f"numeric={row['numeric']['sec']}s/{row['numeric']['flagged']}건  "
                  f"all={row['all']['sec']}s/{row['all']['flagged']}건")
+            time.sleep(PACE_SEC)
 
     print("\n== 요약 ==")
     for scope in ("numeric", "all"):
