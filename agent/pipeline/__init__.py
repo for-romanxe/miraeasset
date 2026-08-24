@@ -8,6 +8,12 @@ from .retriever import fund_brief, get_docs_index, get_funds_index
 from .router import route
 
 
+# 세액공제 계산 트리거. "세액공제"라는 용어를 안 쓰고 묻는 경우가 많다
+# ("다 공제되나요?", "얼마나 돌려받나요?"). 바깥에서 이미 세제 분류를 통과한
+# 질의만 들어오므로 이 정도 폭은 안전하다.
+TAX_CREDIT_ASK = re.compile(r"세액\s*공제|공제\s*(되|받|해|가능)|돌려받|환급")
+
+
 def answer(question_id: str, question: str) -> dict:
     trace: list[str] = []
     context_blocks: list[str] = []
@@ -60,13 +66,16 @@ def answer(question_id: str, question: str) -> dict:
 
     # 세제 계산: 수치가 걸린 질의는 LLM이 아니라 계산기로
     if "세제" in r.categories:
-        if "세액공제" in question and "ISA" not in question:
+        if TAX_CREDIT_ASK.search(question) and "ISA" not in question:
             amounts = calculator.extract_amounts(question)
-            first = amounts[0] if amounts else 0
+            # 계좌명이 있으면 위치 기준으로 배정한다. 언급 순서대로 넣으면
+            # "IRP 200만원이랑 연금저축 700만원"에서 캡이 잘못 적용된다.
+            by_account = calculator.split_amounts_by_account(question)
+            if by_account is None:
+                by_account = (amounts[0] if amounts else 0,
+                              amounts[1] if len(amounts) > 1 else 0)
             result, calc_trace, basis = calculator.tax_credit(
-                pension_saving=0 if "IRP" in question and len(amounts) == 1 else first,
-                irp=first if "IRP" in question and len(amounts) == 1 else
-                    amounts[1] if len(amounts) > 1 else 0)
+                pension_saving=by_account[0], irp=by_account[1])
             if amounts:
                 trace.append(f"[계산] 세액공제({basis} 근거): {calc_trace}")
                 calc_notes.append(calc_trace + f" (근거: {basis})")
