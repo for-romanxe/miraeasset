@@ -215,7 +215,10 @@ def main():
             time.sleep(PACE_SEC)
             try:
                 again = judge_one(judge, it["question"], resp, it.get("behavior", ""))
-            except requests.HTTPError:
+            except requests.RequestException:
+                # 재채점은 신뢰도 표본일 뿐이다. DNS 장애·429 등 어떤 요청
+                # 실패도 본채점까지 무르지 않는다 (실측: DNS 장애가 전체
+                # 실행을 죽였음 — ConnectionError는 HTTPError가 아니다).
                 again = None
             if again is not None:
                 g = score_gap(scores, again)
