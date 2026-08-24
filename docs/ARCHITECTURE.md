@@ -21,7 +21,7 @@
 | ① router | 질의 유형(제도/세제/상품/종합/절차) 분류, 필요 조건 슬롯 판정 | 키워드 규칙 | HyperCLOVA X 분류 + 슬롯 추출 |
 | ② retriever | docs 58건 검색 + funds.json 정형 조회 | BM25 + 이름/필터 매칭 | 하이브리드(BM25+임베딩), 시리즈 비교 |
 | ③ calculator | 세액공제·연금소득세 등 규칙 계산 | 세액공제 한도 1종 | 세제 계산기 풀세트 |
-| ④ generator | 근거 기반 답변 생성, 근거 인용 강제 | Mock LLM | HyperCLOVA X + self-check |
+| ④ generator | 근거 기반 답변 생성, 근거 인용 강제 | HyperCLOVA X(HCX-005) + verifier | 프롬프트 튜닝, self-check 강화 |
 
 - 상품 질의의 수치 비교·정렬·필터는 임베딩 검색이 아니라 **funds.json 코드 필터링**으로 처리
 - "좋은 상품 추천해줘"처럼 조건이 빈 질의는 검색으로 가지 않고 **역질문 분기**
@@ -31,7 +31,7 @@
 
 ```
 server.py            GET /answer 엔드포인트 (평가 스키마 그대로)
-llm.py               LLM 인터페이스. MockLLM(현재) ↔ HyperClovaX(8/6 이후 교체)
+llm.py               LLM 인터페이스. HyperClovaX(기본) ↔ MockLLM(키 없을 때)
 data.py              funds.json / docs 로딩
 pipeline/
   router.py          질의 분류 + 슬롯 판정
@@ -41,7 +41,8 @@ pipeline/
 ```
 
 인터페이스가 고정돼 있으므로 모듈별 병렬 작업 가능. LLM 호출부는
-`generate(prompt) -> str` 하나로 통일해서 8/6 크레딧 수령 후 갈아 끼운다.
+`generate(prompt) -> str` 하나로 통일돼 있어 모델 교체 지점이 `get_llm()` 하나다.
+간헐적 연결 끊김·5xx에는 지수 백오프로 3회 재시도한다 (평가 기간 답변 유실 방지).
 
 ## 응답 스키마 (과제 명세 준수)
 
@@ -60,10 +61,10 @@ GET /answer?question_id=Q-001&question=...
 
 | 주차 | 목표 |
 |---|---|
-| ~8/5 | 뼈대 완성(현재), 자체 평가셋 v1, 검색 품질 1차 개선 |
-| 8/6 | 설명회: NCP 크레딧 수령, CLOVA Studio 키 발급 |
-| 8/1~2주 | HyperCLOVA X 연동, 라우터·생성 LLM화, 세제 계산기 확장 |
-| 8/3~4주 | self-check·역질문·전제 교정, 평가셋 회귀 반복 |
+| ~8/5 | ✅ 뼈대 완성, 자체 평가셋 v1, 검색 품질 1차 개선 |
+| 8/6 | 설명회. 크레딧 신청(8/7). **승인이 계속 지연돼 8/23까지 미지급** |
+| 8/23 | ✅ CLOVA Studio 이용 신청 → 테스트 API 키 발급 → **HCX 연동** (크레딧과 무관하게 종량제로 사용 가능) |
+| 8/3~4주 | 프롬프트 튜닝, LLM 채점 전수 적용, verifier 보강, 라우터 HCX 전환 |
 | 9/1주 | NCP 배포, 부하·장애 테스트, 기술제안서 |
 | 9/6 | 제출. 이후 9/20까지 서버 유지 (마감 후 코드 변경 = 실격) |
 

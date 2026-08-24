@@ -22,8 +22,9 @@ main에 직접 푸시하지 않는다 (플랜 제약으로 강제 장치가 없�
 ## Agent 뼈대 (agent/)
 
 평가 명세의 `GET /answer` 스키마를 그대로 구현한 walking skeleton.
-LLM은 8/6 크레딧 수령 전까지 Mock이며, `CLOVASTUDIO_API_KEY` 환경변수를
-설정하면 HyperCLOVA X 호출로 자동 전환된다 (agent/llm.py).
+LLM은 **HyperCLOVA X(HCX-005)** 를 쓴다. `CLOVASTUDIO_API_KEY` 환경변수가
+있으면 HCX를, 없으면 MockLLM을 자동 선택한다 (agent/llm.py). 키 없이도
+검색·라우팅·계산기 경로를 그대로 돌려볼 수 있다.
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
