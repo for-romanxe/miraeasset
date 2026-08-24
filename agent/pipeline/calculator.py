@@ -162,5 +162,38 @@ def extract_amounts(question: str) -> list[int]:
     return out
 
 
+ACCOUNT_PATTERNS = (
+    ("pension_saving", re.compile(r"연금\s*저축")),
+    ("irp", re.compile(r"IRP|아이알피|개인형\s*퇴직연금", re.IGNORECASE)),
+)
+
+
+def split_amounts_by_account(question: str) -> tuple[int, int] | None:
+    """금액마다 가장 가까운 계좌명을 찾아 (연금저축, IRP) 합계로 배정한다.
+
+    언급 순서대로 배정하면 "IRP 200만원이랑 연금저축 700만원"에서 700만원이
+    IRP 몫으로 잡혀 연금저축 600만원 캡을 피해간다. 한국어는 계좌명이 금액 앞에
+    오므로 앞쪽을 우선 보고, 없으면 뒤쪽에서 찾는다.
+
+    계좌명이 하나도 없으면 None — 호출부가 기존 순서 배정으로 폴백한다.
+    """
+    mentions = [(m.start(), key)
+                for key, pat in ACCOUNT_PATTERNS
+                for m in pat.finditer(question)]
+    if not mentions:
+        return None
+
+    totals = {"pension_saving": 0, "irp": 0}
+    for m in AMOUNT.finditer(question):
+        pos = m.start()
+        before = [(pos - p, k) for p, k in mentions if p <= pos]
+        after = [(p - pos, k) for p, k in mentions if p > pos]
+        nearest = min(before or after)[1]
+        won = next(int(g.replace(",", "")) * mul
+                   for g, mul in zip(m.groups(), (100_000_000, 10_000, 1)) if g)
+        totals[nearest] += won
+    return totals["pension_saving"], totals["irp"]
+
+
 def extract_percentages(question: str) -> list[float]:
     return [float(value) / 100 for value in PERCENT.findall(question)]
