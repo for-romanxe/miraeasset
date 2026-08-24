@@ -1,0 +1,20 @@
+# 빌드 컨텍스트에서 제외. .venv만 43MB라 전송 시간이 그대로 낭비된다.
+.venv/
+.git/
+.gitignore
+__pycache__/
+*.pyc
+.DS_Store
+.claude/
+.env
+.env.*
+
+# 런타임에 불필요한 것들
+docs/
+eval/
+parser/*.py
+parser/out/INDEX.md
+requirements-dev.txt
+README.md
+AGENTS.md
+scripts/
