@@ -36,8 +36,14 @@ class HyperClovaX:
 
     # 평가 기간(9/7~9/20) 중 간헐적 연결 끊김·5xx로 답변 하나가 통째로
     # 실패하지 않도록 재시도한다. 지수 백오프, 마지막 시도는 그대로 예외를 올린다.
+    #
+    # 단, 재시도가 무한정 늘어지면 심사 측이 먼저 연결을 끊는다. 그러면 우리는
+    # 응답을 아예 못 준 것이 된다. 전체 예산(BUDGET)을 두고 그 안에서만
+    # 재시도하며, 요청당 타임아웃도 남은 예산에 맞춘다.
     RETRIES = 3
     BACKOFF = (0.5, 1.5, 3.0)
+    BUDGET = float(os.environ.get("CLOVASTUDIO_BUDGET_SEC", "25"))
+    MIN_TIMEOUT = 3.0
 
     def generate(self, prompt: str, *, max_tokens: int = 1024) -> str:
         import time
@@ -45,7 +51,12 @@ class HyperClovaX:
 
         import requests
 
+        deadline = time.monotonic() + self.BUDGET
         for attempt in range(self.RETRIES):
+            remaining = deadline - time.monotonic()
+            if attempt and remaining < self.MIN_TIMEOUT:
+                # 남은 예산으로는 의미 있는 재시도가 안 된다. 마지막 오류를 올린다.
+                raise last_error
             try:
                 r = requests.post(
                     self.ENDPOINT.format(model=self.model),
@@ -63,17 +74,19 @@ class HyperClovaX:
                         "temperature": 0.1,
                         "topP": 0.8,
                     },
-                    timeout=60,
+                    timeout=max(self.MIN_TIMEOUT, remaining),
                 )
                 # 4xx는 요청 자체가 틀린 것이므로 재시도해도 같다 (429는 예외)
                 if r.status_code < 500 and r.status_code != 429:
                     break
                 r.raise_for_status()
-            except requests.exceptions.RequestException:
+            except requests.exceptions.RequestException as exc:
+                last_error = exc
                 # 마지막 시도면 그대로 올려서 호출부가 알게 한다
                 if attempt == self.RETRIES - 1:
                     raise
-                time.sleep(self.BACKOFF[attempt])
+                time.sleep(min(self.BACKOFF[attempt],
+                               max(0.0, deadline - time.monotonic())))
 
         r.raise_for_status()
         content = r.json()["result"]["message"]["content"]
