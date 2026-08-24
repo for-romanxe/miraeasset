@@ -74,6 +74,8 @@
 {"id": "prem-2", "type": "전제교정", "difficulty": "상", "question": "IRP는 한 번 넣으면 55세까지 절대 못 빼는 거 맞죠?", "expect": {"docs": ["doc20", "doc46", "doc47", "doc48", "doc49", "doc50", "doc5"]}}
 {"id": "prem-3", "type": "전제교정", "difficulty": "상", "question": "퇴직연금은 압류도 절대 안 되고 세금도 하나도 없다던데 맞나요?", "expect": {"docs": ["doc16"]}}
 {"id": "rec-2", "type": "조건부추천", "difficulty": "중", "question": "IRP에서 살 만한 펀드 하나 추천해 주세요.", "expect": {"clarify": true}}
+{"id": "rec-3", "type": "조건부추천", "difficulty": "중", "question": "장기로 안정적인 펀드 하나 추천해 주세요.", "expect": {"trace_contains": ["[가정]", "IRP 기준"]}}
+{"id": "prem-4", "type": "전제교정", "difficulty": "상", "question": "IRP에 1,800만원 넣으면 다 세액공제 되는 거죠?", "expect": {"docs": ["doc41"], "trace_contains": ["[전제교정]", "9,000,000"]}}
 {"id": "do-1", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "디폴트옵션은 A로 지정만 해뒀고 아직 실제로 매수된 디폴트옵션은 없습니다. 이때 B유형으로 옵트인 매수해도 되나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
 {"id": "do-5", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "A유형만 지정해둔 상태에서 실제 보유가 없을 때 B유형을 먼저 옵트인으로 매수했습니다. 이후 예금 만기자금이 지정된 A유형으로 자동매수될 수 있나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}
 {"id": "do-9", "type": "제도(디폴트옵션)", "difficulty": "중", "question": "A와 B를 보유 중인데 B를 일부만 매도했습니다. 이제 A를 옵트인으로 추가 매수할 수 있나요?", "expect": {"docs": ["doc29", "doc30", "doc31", "doc32"]}}

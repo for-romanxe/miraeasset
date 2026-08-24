@@ -318,6 +318,13 @@ MANUAL = [
     {"id": "rec-2", "type": "조건부추천", "difficulty": "중",
      "question": "IRP에서 살 만한 펀드 하나 추천해 주세요.",
      "expect": {"clarify": True}},
+    {"id": "rec-3", "type": "조건부추천", "difficulty": "중",
+     "question": "장기로 안정적인 펀드 하나 추천해 주세요.",
+     "expect": {"trace_contains": ["[가정]", "IRP 기준"]}},
+    {"id": "prem-4", "type": "전제교정", "difficulty": "상",
+     "question": "IRP에 1,800만원 넣으면 다 세액공제 되는 거죠?",
+     "expect": {"docs": ["doc41"],
+                "trace_contains": ["[전제교정]", "9,000,000"]}},
 ]
 
 

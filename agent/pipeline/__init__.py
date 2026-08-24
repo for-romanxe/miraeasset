@@ -32,6 +32,9 @@ def answer(question_id: str, question: str) -> dict:
         return _respond(question_id, question, "", trace,
                         generator.clarification_answer(r))
 
+    if r.assumptions:
+        trace.append("[가정] " + generator.assumption_disclosure(r))
+
     # 상품 조회: 펀드명 매칭은 라우터 판정과 무관하게 항상 시도한다.
     # ("솔로몬 국공채 뭐가 달라요"처럼 상품 키워드 없이 이름만 나오는 질의 대응)
     hits = get_funds_index().by_name(question)
@@ -59,12 +62,19 @@ def answer(question_id: str, question: str) -> dict:
     if "세제" in r.categories:
         if "세액공제" in question and "ISA" not in question:
             amounts = calculator.extract_amounts(question)
+            first = amounts[0] if amounts else 0
             result, calc_trace, basis = calculator.tax_credit(
-                pension_saving=amounts[0] if amounts else 0,
-                irp=amounts[1] if len(amounts) > 1 else 0)
+                pension_saving=0 if "IRP" in question and len(amounts) == 1 else first,
+                irp=first if "IRP" in question and len(amounts) == 1 else
+                    amounts[1] if len(amounts) > 1 else 0)
             if amounts:
                 trace.append(f"[계산] 세액공제({basis} 근거): {calc_trace}")
                 calc_notes.append(calc_trace + f" (근거: {basis})")
+                correction = calculator.tax_credit_premise_correction(
+                    question, sum(amounts), result["eligible"])
+                if correction:
+                    trace.append(f"[전제교정] {correction}")
+                    calc_notes.append(correction + f" (근거: {basis})")
             else:
                 trace.append("[계산] 금액 미제시 → 한도 정보만 근거로 제공")
         if re.search(r"연금소득세|받을 때.*세[금율]|수령.*세[금율]|세율", question):
@@ -116,10 +126,16 @@ def answer(question_id: str, question: str) -> dict:
         answer_text, context_blocks, calc_notes, llm_name)
     trace.append(verify_trace)
 
+    # 가정 명시: 빈 슬롯이 1개뿐이면 역질문 대신 가정을 밝히고 답한다.
+    # 검증 뒤에 붙인다 — verifier는 LLM 생성물만 대조하면 된다.
+    if r.assumptions:
+        answer_text = generator.assumption_disclosure(r) + "\n\n" + answer_text
+
     # 출처 표기: LLM 준수 여부와 무관하게 코드가 보장한다 (모든 답변 필수 규정)
     sources = _collect_sources(doc_hits, hits, calc_notes)
     if sources:
         answer_text += "\n\n근거: " + " / ".join(sources)
+
 
     return _respond(question_id, question,
                     "\n\n---\n\n".join(context_blocks), trace, answer_text)

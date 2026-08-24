@@ -34,6 +34,16 @@ def tax_credit(pension_saving: int = 0, irp: int = 0,
     return result, trace, "doc41"
 
 
+def tax_credit_premise_correction(question: str, claimed: int,
+                                  eligible: int) -> str | None:
+    """전액 공제 전제가 계산된 공제대상 한도를 넘으면 교정 문구를 반환한다."""
+    claims_full_credit = bool(re.search(r"(전부|모두|다)\s*(세액)?공제|전액\s*(세액)?공제", question))
+    if claims_full_credit and claimed > eligible:
+        return (f"{claimed:,}원 전부가 세액공제된다는 전제는 맞지 않습니다. "
+                f"세액공제 대상은 {eligible:,}원입니다.")
+    return None
+
+
 def pension_income_tax(age: int | None = None) -> tuple[dict, str, str]:
     """연금소득세율(지방소득세 포함). 나이 미상이면 전 구간 표를 돌려준다."""
     table = [(55, 69, 5.5), (70, 79, 4.4), (80, 200, 3.3)]
