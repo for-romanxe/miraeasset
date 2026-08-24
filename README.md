@@ -53,6 +53,7 @@ CLOVASTUDIO_API_KEY=<키> ./scripts/deploy.sh   # docker build + 80포트 기동
 | `run_eval.py` | 결정적 회귀 채점 (문서 인용·수치·분기) — PR 전 필수 |
 | `llm_judge.py` | 답변 문장 품질 LLM 채점 (4축 루브릭, 키 없으면 드라이런) |
 | `perf.py` | 콜드스타트·문항당 지연 측정 (LLM 제외) |
+| `load_test.py` | 실행 중인 API에 전체 평가셋을 순차·동시 요청해 상태코드·스키마·지연 추세 측정 |
 
 ## 데이터 파이프라인 (parser/)
 
