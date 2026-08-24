@@ -34,6 +34,14 @@ _SENT_END = re.compile(r"(?<=[.!?])\s+")
 # 쪼개져 전부 미지지 처리됐다 (검증 로직이 아니라 분리 단계의 버그였다).
 _LIST_MARKER = re.compile(r"^(?:\d+[.)]|[-*·•])\s*")
 
+# 사실을 새로 주장하지 않는 정형 문장 — LLM 검증 대상에서 제외한다.
+# scope="all" 표본 실측(19문항)에서 미지지 오탐 5건이 전부 이 유형이었다:
+# 도입문("…는 다음과 같습니다:"), 마무리 권유("…참고하여 …추천드립니다"),
+# 한계 고지 정형구("제공된 자료로는 확인할 수 없습니다"). 프롬프트 규칙
+# ("연결·설명 문장은 지지로")만으로는 안 걸러져서 결정적으로 거른다.
+_NON_CLAIM = re.compile(r"다음과 같|아래와 같|참고하[여시]|추천드립니다"
+                        r"|제공된 자료로는 확인할 수 없")
+
 
 def _normalize(text: str) -> str:
     return text.replace(",", "").replace(" ", "")
@@ -162,14 +170,17 @@ def _parse_indices(raw: str) -> list[int]:
 
 
 def verify_claims_llm(answer: str, context_blocks: list[str], calc_notes: list[str],
-                      *, scope: str = "numeric") -> tuple[list[str], str | None]:
+                      *, scope: str = "all") -> tuple[list[str], str | None]:
     """HCX로 문장 단위 의미 검증.
 
-    scope="numeric": 수치가 포함된 문장만 검증 대상으로 보낸다 (기본값 —
-    이 검증의 목적이 "맥락이 틀린 수치" 탐지이므로 수치 없는 문장까지 보낼
-    이유가 적고, 프롬프트가 짧아져 비용도 준다).
-    scope="all": 모든 문장을 보낸다 — 수치 없는 문장의 사실 오류까지 잡지만
-    호출당 비용·지연이 늘어난다. eval/verifier_bench.py로 실측 비교한다.
+    scope="all" (기본값): 모든 문장을 검증한다. 8/25 채점 최저 문항 prem-3의
+    결함("추가납입금·명예퇴직금은 압류 금지 대상이 아니다" — 근거와 정반대)이
+    수치 없는 문장이라 numeric으로는 원리상 못 잡는 것이 실측됐다. 미탐(환각
+    통과 → Hallucination 지표 직격)이 오탐(정답에 재확인 안내 한 줄)보다
+    비싸고, 문항당 지연 +0.9초는 평가 타임아웃 300초(8/24 공지) 안에서
+    무의미해 all을 기본으로 한다.
+    scope="numeric": 수치 포함 문장만 — 비용·오탐을 더 줄여야 할 때의 대안.
+    실측 비교는 eval/verifier_bench.py.
 
     반환: (미지지 문장 목록, 트레이스). Mock 단계에서는 (빈 목록, None) —
     apply()가 None이면 트레이스에 이 단계를 아예 안 붙인다.
@@ -178,17 +189,22 @@ def verify_claims_llm(answer: str, context_blocks: list[str], calc_notes: list[s
     if llm.name == "mock":
         return [], None
     sentences = _split_sentences(answer)
+    # 10자 미만은 "(doc41)" 같은 분리 부스러기라 주장으로 볼 수 없다 (실측 오탐).
     targets = [(i, s) for i, s in enumerate(sentences)
-              if scope == "all" or _numbers(s)]
+              if (scope == "all" or _numbers(s))
+              and len(s) >= 10 and not _NON_CLAIM.search(s)]
     if not targets:
-        return [], "[검증2] 수치 포함 문장 없음 — 의미 검증 생략"
+        return [], "[검증2] 검증 대상 문장 없음 — 의미 검증 생략"
     numbered = "\n".join(f"{i}. {s}" for i, s in targets)
     ctx = "\n\n---\n\n".join(context_blocks)[:4000] if context_blocks else "(근거 없음)"
     calc = "\n".join(calc_notes) if calc_notes else "(없음)"
     prompt = CLAIM_VERIFY_PROMPT.format(context=ctx, calc=calc, numbered=numbered)
     # quote를 문장마다 받으므로 번호만 받을 때보다 토큰이 더 든다.
     raw = llm.generate(prompt, max_tokens=120 + 80 * len(targets))
-    bad = [sentences[i] for i in _parse_indices(raw) if 0 <= i < len(sentences)]
+    # 심판이 검증 대상 목록에 없는 번호를 X로 찍는 일이 실측됐다 (필터로
+    # 제외한 도입문이 미지지로 둔갑). 대상으로 보낸 번호만 인정한다.
+    target_idx = {i for i, _ in targets}
+    bad = [sentences[i] for i in _parse_indices(raw) if i in target_idx]
     trace = (f"[검증2] {scope} 범위 {len(targets)}문장 검증, 미지지 {len(bad)}건"
              + (f": {bad[0][:60]}" if bad else ""))
     return bad, trace
