@@ -1,0 +1,96 @@
+"""API 키 없이 실행하는 verifier 회귀 테스트 (#43)."""
+import unittest
+
+from agent.pipeline import verifier
+
+
+class NumberMatchTest(unittest.TestCase):
+    def test_matched_numbers_pass(self):
+        unmatched, trace = verifier.verify_numbers(
+            "세액공제 한도는 900만원입니다.", ["연 900만원까지 세액공제"], [])
+        self.assertEqual(unmatched, [])
+        self.assertIn("1개 중 1개 근거 확인", trace)
+
+    def test_ungrounded_number_flagged(self):
+        """근거에도 없고 두 수치의 합·차로도 안 나오면 그대로 미확인 처리."""
+        unmatched, trace = verifier.verify_numbers(
+            "IRP는 연간 700만원까지 세액공제됩니다.",
+            ["연금저축은 600만원, IRP는 합산 900만원까지 세액공제"], [])
+        self.assertIn("700", unmatched)
+
+
+class DerivableArithmeticTest(unittest.TestCase):
+    """tax-17 오탐 — 근거 수치 두 개의 정당한 합·차 결과를 미확인으로 잘못 표시했었다."""
+
+    def test_subtraction_of_evidence_numbers_is_not_flagged(self):
+        calc_notes = ["사적연금 전체 20,000,000원 × 10.0% = 2,000,000원 "
+                      "vs × 16.5% = 3,300,000원"]
+        answer = "종합과세와 분리과세의 세액 차이는 1,300,000원입니다."
+        unmatched, trace = verifier.verify_numbers(answer, [], calc_notes)
+        self.assertEqual(unmatched, [])
+        self.assertIn("유도 산술 인정", trace)
+
+    def test_addition_of_evidence_numbers_is_not_flagged(self):
+        unmatched, _ = verifier.verify_numbers(
+            "두 계좌를 합치면 총 900만원입니다.",
+            ["연금저축 600만원", "IRP 300만원"], [])
+        self.assertEqual(unmatched, [])
+
+    def test_unrelated_number_is_still_flagged_despite_other_evidence_numbers(self):
+        """근거에 숫자가 여럿 있다고 아무 수치나 통과시키면 안 된다."""
+        unmatched, _ = verifier.verify_numbers(
+            "세액공제 한도는 700만원입니다.",
+            ["연금저축 600만원", "IRP 합산 900만원"], [])
+        self.assertIn("700", unmatched)
+
+    def test_percent_tokens_excluded_from_arithmetic(self):
+        """%는 금액과 단위가 달라 합·차 유도 대상에서 제외해야 한다."""
+        unmatched, _ = verifier.verify_numbers(
+            "세율은 21.5%입니다.", ["세율 16.5%", "가산율 5%"], [])
+        self.assertIn("21.5%", unmatched)
+
+
+class SentenceSplitTest(unittest.TestCase):
+    def test_splits_on_sentence_end_and_newline(self):
+        text = "IRP는 개인형 퇴직연금입니다. 연 1,800만원까지 납입 가능합니다.\n- 세액공제 한도는 900만원입니다."
+        sentences = verifier._split_sentences(text)
+        self.assertEqual(len(sentences), 3)
+        self.assertTrue(sentences[2].startswith("세액공제"))
+
+    def test_source_line_dropped(self):
+        sentences = verifier._split_sentences("답변입니다.\n\n근거: doc41(연금저축) 본문")
+        self.assertEqual(sentences, ["답변입니다."])
+
+    def test_reconfirmation_notice_dropped(self):
+        sentences = verifier._split_sentences(
+            "답변입니다.\n\n※ 위 답변 중 일부 내용은 확인되지 않았습니다.")
+        self.assertEqual(sentences, ["답변입니다."])
+
+
+class ClaimVerifyMockTest(unittest.TestCase):
+    """CLOVASTUDIO_API_KEY 없이 돌리는 스위트라 MockLLM 경로만 검증한다."""
+
+    def test_mock_llm_skips_claim_check(self):
+        unsupported, trace = verifier.verify_claims_llm(
+            "연금저축과 IRP 합쳐서 1,800만원까지 납입 가능합니다.",
+            ["연 1,800만원까지 납입 가능"], [])
+        self.assertEqual(unsupported, [])
+        self.assertIsNone(trace)
+
+
+class ApplyTest(unittest.TestCase):
+    def test_apply_appends_no_disclaimer_in_mock_mode(self):
+        answer, trace = verifier.apply(
+            "IRP는 연 700만원까지 세액공제됩니다.",
+            ["연금저축 600만원, IRP 합산 900만원"], [], "mock")
+        self.assertNotIn("직접 확인되지", answer)
+        self.assertIn("미확인", trace)
+
+    def test_apply_keeps_trace_single_block_when_claim_check_skipped(self):
+        _, trace = verifier.apply(
+            "세액공제 한도는 900만원입니다.", ["연 900만원까지 세액공제"], [], "mock")
+        self.assertNotIn("[검증2]", trace)
+
+
+if __name__ == "__main__":
+    unittest.main()
