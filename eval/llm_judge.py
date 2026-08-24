@@ -123,11 +123,20 @@ def main():
     twice = "--twice" in sys.argv  # 심판 신뢰도 측정 모드
     total, axes_sum, skipped, worst = 0, {}, 0, []
     gaps = []
-    for it in items:
-        resp = pipeline.answer(it["id"], it["question"])
-        scores = judge_one(judge, it["question"], resp)
+    errors = 0
+    for i, it in enumerate(items, 1):
+        # 116문항을 도는 동안 네트워크가 한 번 끊기면 전체가 날아간다.
+        # 문항 단위로 격리해서 남은 문항을 계속 채점하고, 몇 건이 유실됐는지 남긴다.
+        try:
+            resp = pipeline.answer(it["id"], it["question"])
+            scores = judge_one(judge, it["question"], resp)
+        except Exception as e:
+            errors += 1
+            print(f"[{i}/{len(items)}] {it['id']:12s} 오류 {type(e).__name__}", flush=True)
+            continue
         if scores is None:
             skipped += 1
+            print(f"[{i}/{len(items)}] {it['id']:12s} 형식위반", flush=True)
             continue
         s = sum(scores[a] for a in AXES)
         total += 1
@@ -143,10 +152,13 @@ def main():
                 g = score_gap(scores, again)
                 gaps.append((g, it["id"], s, sum(again[a] for a in AXES)))
                 gap_note = f"  [재채점 {sum(again[a] for a in AXES)}/8, 차이 {g}]"
-        print(f"{it['id']:12s} {s}/8{gap_note}")
+        print(f"[{i}/{len(items)}] {it['id']:12s} {s}/8{gap_note}", flush=True)
 
     if total:
-        print(f"\n== 평균 {sum(s for s, *_ in worst) / total:.2f}/8  (채점 {total}, 형식위반 {skipped})")
+        print(f"\n== 평균 {sum(s for s, *_ in worst) / total:.2f}/8"
+              f"  (채점 {total}/{len(items)}, 형식위반 {skipped}, 오류 {errors})")
+        if errors:
+            print(f"   ⚠ {errors}건이 오류로 유실됐습니다. 평균은 나머지 기준입니다.")
         for a, v in axes_sum.items():
             print(f"   {a:10s} {v / total:.2f}/2")
 
