@@ -29,6 +29,23 @@ curl -G "http://<서버주소>/answer" \
   --data-urlencode "question=연금저축이랑 IRP 합쳐서 세액공제 얼마까지 받을 수 있나요?"
 ```
 
+Python에서는 `requests`로 같은 요청을 보낼 수 있다.
+
+```python
+import requests
+
+response = requests.get(
+    "http://<서버주소>/answer",
+    params={
+        "question_id": "Q-001",
+        "question": "연금저축이랑 IRP 합쳐서 세액공제 얼마까지 받을 수 있나요?",
+    },
+    timeout=30,
+)
+response.raise_for_status()
+print(response.json())
+```
+
 ### 응답 (200, application/json)
 
 과제 명세의 5필드 스키마. 필드 추가·이름 변경 금지 (AGENTS.md 규칙).
@@ -39,7 +56,7 @@ curl -G "http://<서버주소>/answer" \
 | `question` | string | 요청의 question 그대로 |
 | `retrieved_context` | string | 답변 근거로 검색된 문서 청크·펀드 요약. 청크는 `[docN(제목) 위치]` 라벨을 달고 `\n\n---\n\n`로 구분. 근거가 없는 응답(가드·역질문)은 빈 문자열 |
 | `think_trace` | string | 파이프라인 처리 과정. `[라우팅]` `[검색]` `[상품조회]` `[계산]` `[생성]` `[검증]` 태그가 줄 단위로 쌓임 |
-| `answer` | string | 최종 답변. 마지막 줄에 `근거: ...` 출처 표기가 항상 붙음 (역질문·가드 제외) |
+| `answer` | string | 최종 답변. 마지막 줄에 `근거: ...` 출처 표기가 항상 붙음 (역질문·가드·정보한계 제외) |
 
 ### 응답 예시 (실측, 발췌)
 
