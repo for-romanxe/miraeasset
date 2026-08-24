@@ -37,12 +37,13 @@ class HyperClovaX:
     # 평가 기간(9/7~9/20) 중 간헐적 연결 끊김·5xx로 답변 하나가 통째로
     # 실패하지 않도록 재시도한다. 지수 백오프, 마지막 시도는 그대로 예외를 올린다.
     #
-    # 단, 재시도가 무한정 늘어지면 심사 측이 먼저 연결을 끊는다. 그러면 우리는
-    # 응답을 아예 못 준 것이 된다. 전체 예산(BUDGET)을 두고 그 안에서만
-    # 재시도하며, 요청당 타임아웃도 남은 예산에 맞춘다.
-    RETRIES = 3
-    BACKOFF = (0.5, 1.5, 3.0)
-    BUDGET = float(os.environ.get("CLOVASTUDIO_BUDGET_SEC", "25"))
+    # 예산(BUDGET)은 주최측 공지의 문항당 타임아웃 300초 안에서 잡는다.
+    # 300초를 다 쓰면 타임아웃으로 기록된 뒤에야 재시도를 받으므로, 90초에서
+    # 끊고 실패를 올리는 편이 낫다 (server.py가 503으로 바꿔 즉시 재시도를 받는다).
+    # 백오프 마지막 30초는 HCX 분당 한도(429)의 창이 리셋되기를 기다리는 값이다.
+    RETRIES = 5
+    BACKOFF = (0.5, 2.0, 8.0, 30.0)
+    BUDGET = float(os.environ.get("CLOVASTUDIO_BUDGET_SEC", "90"))
     MIN_TIMEOUT = 3.0
 
     def generate(self, prompt: str, *, max_tokens: int = 1024) -> str:

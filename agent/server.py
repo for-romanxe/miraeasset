@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 
 from . import pipeline
@@ -28,15 +28,24 @@ class AnswerResponse(BaseModel):
     answer: str
 
 
+# 주최측 공지(8/24): 타임아웃(300초) 또는 5xx 응답이면 같은 문항을 최대 2회
+# 재시도한다. 일시 장애에 곧바로 200+한계 고지를 주면 그 문항의 재시도 기회를
+# 스스로 버리는 셈이다. 같은 question_id의 첫 2회 실패는 503으로 돌려 재시도를
+# 받고, 마지막 기회(3회째)에만 5필드 폴백을 반환해 빈손으로 끝나지 않게 한다.
+EVALUATOR_RETRIES = 2
+_fail_counts: dict[str, int] = {}
+
+
 @app.get("/answer", response_model=AnswerResponse)
 def answer(question_id: str = Query(...), question: str = Query(...)) -> dict:
-    # 평가 기간(9/7~9/20) 중 어떤 예외가 나도 500을 돌려주지 않는다.
-    # 500은 답변 품질 문제가 아니라 응답 스키마 위반이다. 답을 못 하더라도
-    # 5필드를 지켜 한계를 고지한다.
     try:
-        return pipeline.answer(question_id, question)
+        result = pipeline.answer(question_id, question)
     except Exception:
-        log.exception("answer failed: question_id=%s", question_id)
+        fails = _fail_counts.get(question_id, 0) + 1
+        _fail_counts[question_id] = fails
+        log.exception("answer failed (%d회째): question_id=%s", fails, question_id)
+        if fails <= EVALUATOR_RETRIES:
+            raise HTTPException(status_code=503, detail="일시적 장애, 재시도 요청")
         return {
             "question_id": question_id,
             "question": question,
@@ -44,6 +53,8 @@ def answer(question_id: str = Query(...), question: str = Query(...)) -> dict:
             "think_trace": "[오류] 일시적 장애로 답변을 생성하지 못했습니다",
             "answer": generator.limitation_answer(),
         }
+    _fail_counts.pop(question_id, None)
+    return result
 
 
 @app.get("/health")
