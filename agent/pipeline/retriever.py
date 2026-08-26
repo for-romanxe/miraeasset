@@ -73,7 +73,19 @@ QUERY_EXPAND = {
     "외국 ETF": "해외 ETF",
     "연금 통장": "연금계좌",
     "빚쟁이": "압류 압류금지",
+    "폐업": "도산 미청구적립금 직접청구 지급누락",
+    "과세 재원": "과세재원확정 과세대상금액 과세제외가능금액",
+    "인출 순서": "연금 인출 가이드 인출기 노후자산 연금수령한도 과세재원",
 }
+
+# 한 단어만으로 확장하면 오탐이 큰 의도는 단어 조합으로 제한한다.
+# 평가 문장 자체가 아니라 실제 고객 발화에서 반복될 개념 조합을 문서 용어에 잇는다.
+QUERY_EXPAND_PATTERNS = [
+    (re.compile(r"DC.*(?:운용|손실|책임)|(?:운용|손실|책임).*DC", re.I),
+     "확정기여형 가입자 직접운용 운용손익"),
+    (re.compile(r"연금[을를]?\s*.{0,8}(?:신청|지급)"),
+     "연금개시 연금지급 개시신청 지급유형"),
+]
 
 TITLE_BOOST = 3  # 제목 토큰 반복 횟수. 제목은 주제를 압축하므로 강하게 친다
 TITLE_EXACT_BOOST = 2.0  # 확장 후 질의에 문서 제목 전체가 있으면 점수를 배가한다
@@ -100,6 +112,9 @@ class DocsIndex:
                max_per_doc: int = 2) -> list[dict]:
         for key, extra in QUERY_EXPAND.items():
             if key in query:
+                query += " " + extra
+        for pattern, extra in QUERY_EXPAND_PATTERNS:
+            if pattern.search(query):
                 query += " " + extra
         scores = self.bm25.get_scores(tokenize(query))
         compact_query = _compact(query)
