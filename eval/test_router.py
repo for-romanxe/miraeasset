@@ -1,7 +1,10 @@
 """API 키 없이 실행하는 라우터 프롬프트·파서 회귀 테스트."""
 import json
+import os
 import unittest
+from unittest.mock import patch
 
+from agent import pipeline
 from agent.pipeline.router import build_hcx_router_prompt, route, route_from_hcx
 
 
@@ -40,12 +43,51 @@ class RouterTest(unittest.TestCase):
             "account_types": ["IRP"], "is_recommendation": False,
             "out_of_scope": False, "unsafe": False,
         })
-        self.assertEqual(route_from_hcx(raw, question).categories, ["세제", "제도"])
+        parsed = route_from_hcx(raw, question)
+        self.assertEqual(parsed.categories, ["세제", "제도"])
+        self.assertEqual(parsed.source, "hcx")
         self.assertIn(question, build_hcx_router_prompt(question))
 
     def test_invalid_hcx_response_falls_back(self):
         result = route_from_hcx("not-json", "IRP 세액공제는 얼마인가요?")
         self.assertIn("세제", result.categories)
+        self.assertEqual(result.source, "rule")
+
+    def test_pipeline_uses_rule_router_by_default(self):
+        with patch.dict(os.environ, {}, clear=True):
+            result, note = pipeline._select_route("IRP 세액공제는 얼마인가요?")
+        self.assertEqual(result.source, "rule")
+        self.assertEqual(note, "모드=rule")
+
+    def test_hcx_mode_without_key_falls_back_to_rule(self):
+        with patch.dict(os.environ, {"ROUTER_MODE": "hcx"}, clear=True):
+            result, note = pipeline._select_route("IRP 세액공제는 얼마인가요?")
+        self.assertEqual(result.source, "rule")
+        self.assertIn("API 키 없음", note)
+
+    def test_hcx_mode_calls_model_and_parses_route(self):
+        raw = json.dumps({
+            "categories": ["세제", "제도"], "age": None, "amounts": [],
+            "account_types": ["IRP"], "is_recommendation": False,
+            "out_of_scope": False, "unsafe": False,
+        })
+
+        class StubHCX:
+            name = "hyperclova-x"
+
+            def generate(self, prompt, *, max_tokens=1024):
+                self.prompt = prompt
+                self.max_tokens = max_tokens
+                return raw
+
+        stub = StubHCX()
+        with patch.dict(os.environ, {"ROUTER_MODE": "hcx"}, clear=True), \
+                patch.object(pipeline.generator, "get_llm", return_value=stub):
+            result, note = pipeline._select_route("IRP 세액공제는 얼마인가요?")
+        self.assertEqual(result.source, "hcx")
+        self.assertEqual(note, "모드=hcx")
+        self.assertEqual(stub.max_tokens, 256)
+        self.assertIn("IRP 세액공제", stub.prompt)
 
     def test_common_prompt_attack_variants_are_blocked(self):
         """흔한 프롬프트 공격 우회 표현도 검색 전에 차단한다 (#26)."""

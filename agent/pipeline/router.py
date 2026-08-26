@@ -92,6 +92,7 @@ class Route:
     assumptions: dict[str, str] = field(default_factory=dict)
     out_of_scope: bool = False
     unsafe: bool = False
+    source: str = "rule"
 
     def describe(self) -> str:
         s = f"유형={','.join(self.categories) or '일반'}"
@@ -157,7 +158,8 @@ def route_from_hcx(raw: str, question: str) -> Route:
 
     r = Route(categories=[c for c in data["categories"] if c != "일반"],
               is_recommendation=data["is_recommendation"],
-              out_of_scope=data["out_of_scope"], unsafe=data["unsafe"])
+              out_of_scope=data["out_of_scope"], unsafe=data["unsafe"],
+              source="hcx")
     if r.is_recommendation and "상품" in r.categories:
         r.filled_slots = {
             "account": bool(data["account_types"]),

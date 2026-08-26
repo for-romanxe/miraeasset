@@ -1,11 +1,12 @@
 """파이프라인 오케스트레이션: 라우팅 → 검색/조회 → 계산 → 생성."""
 from __future__ import annotations
 
+import os
 import re
 
 from . import calculator, compare, generator, verifier
 from .retriever import fund_brief, get_docs_index, get_funds_index
-from .router import route
+from .router import build_hcx_router_prompt, route, route_from_hcx
 
 
 # 세액공제 계산 트리거. "세액공제"라는 용어를 안 쓰고 묻는 경우가 많다
@@ -19,8 +20,8 @@ def answer(question_id: str, question: str) -> dict:
     context_blocks: list[str] = []
     calc_notes: list[str] = []
 
-    r = route(question)
-    trace.append(f"[라우팅] {r.describe()}")
+    r, routing_note = _select_route(question)
+    trace.append(f"[라우팅] {routing_note} | {r.describe()}")
 
     # 안전성 가드: 개인정보·프롬프트 공격성 질의는 검색 없이 정중히 거절
     if r.unsafe:
@@ -148,6 +149,26 @@ def answer(question_id: str, question: str) -> dict:
 
     return _respond(question_id, question,
                     "\n\n---\n\n".join(context_blocks), trace, answer_text)
+
+
+def _select_route(question: str):
+    """환경변수로 라우터를 전환하고 HCX 장애 시 규칙 라우터로 폴백한다."""
+    mode = os.environ.get("ROUTER_MODE", "rule").strip().lower()
+    if mode != "hcx":
+        return route(question), "모드=rule"
+
+    llm = generator.get_llm()
+    if llm.name == "mock":
+        return route(question), "모드=hcx → rule 폴백(API 키 없음)"
+
+    try:
+        raw = llm.generate(build_hcx_router_prompt(question), max_tokens=256)
+        result = route_from_hcx(raw, question)
+    except Exception:
+        return route(question), "모드=hcx → rule 폴백(HCX 호출 실패)"
+    if result.source != "hcx":
+        return result, "모드=hcx → rule 폴백(JSON 검증 실패)"
+    return result, "모드=hcx"
 
 
 def _collect_sources(doc_hits, fund_hits, calc_notes) -> list[str]:
