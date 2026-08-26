@@ -47,6 +47,8 @@ def main() -> int:
                         help="HCX 호출 사이 대기 시간(초, 기본 2.0)")
     parser.add_argument("--limit", type=int, default=0,
                         help="앞 N문항만 비교(0이면 전체)")
+    parser.add_argument("--ids",
+                        help="쉼표로 구분한 문항 ID만 비교")
     parser.add_argument("--output", type=Path,
                         help="상세 JSON 결과 저장 경로")
     args = parser.parse_args()
@@ -57,6 +59,9 @@ def main() -> int:
         parser.error("CLOVASTUDIO_API_KEY가 필요합니다")
 
     cases = [json.loads(line) for line in EVALSET.read_text(encoding="utf-8").splitlines()]
+    if args.ids:
+        selected = {item.strip() for item in args.ids.split(",")}
+        cases = [case for case in cases if case["id"] in selected]
     if args.limit:
         cases = cases[:args.limit]
 
@@ -72,6 +77,7 @@ def main() -> int:
             "question": question,
             "matched": matched,
             "hcx_parse_success": hcx_result.source == "hcx",
+            "raw": raw,
             "rule": _signature(rule_result),
             "hcx": _signature(hcx_result),
         })

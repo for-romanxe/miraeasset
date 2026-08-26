@@ -79,6 +79,45 @@ class RouterTest(unittest.TestCase):
         result = route_from_hcx(raw, "IRP 세액공제는 얼마인가요?")
         self.assertEqual(result.source, "rule")
 
+    def test_account_aliases_and_missing_metadata_are_tolerated(self):
+        raw = json.dumps({
+            "categories": "절차",
+            "account_types": ["퇴직연금", "개인형 퇴직연금"],
+            "is_recommendation": False,
+            "out_of_scope": False,
+            "unsafe": False,
+        })
+        result = route_from_hcx(raw, "퇴직연금 이전 절차를 알려주세요")
+        self.assertEqual(result.source, "hcx")
+        self.assertEqual(result.categories, ["절차"])
+
+    def test_empty_strings_and_amount_object_are_tolerated(self):
+        raw = json.dumps({
+            "categories": "일반", "age": None,
+            "amounts": {"5000만원": "옵트인"}, "account_types": "",
+            "is_recommendation": False, "out_of_scope": True,
+            "unsafe": False,
+        })
+        result = route_from_hcx(raw, "오늘 날씨 알려줘")
+        self.assertEqual(result.source, "hcx")
+        self.assertTrue(result.out_of_scope)
+
+    def test_hcx_inline_json_comment_is_tolerated(self):
+        raw = '''```json
+{
+  "categories": ["상품"],
+  "age": null,
+  "amounts": null,
+  "account_types": ["DC"], // HCX가 덧붙인 설명
+  "is_recommendation": true,
+  "out_of_scope": false,
+  "unsafe": false
+}
+```'''
+        result = route_from_hcx(raw, "DC에서 ETF를 추천해 주세요")
+        self.assertEqual(result.source, "hcx")
+        self.assertEqual(result.categories, ["상품"])
+
     def test_pipeline_uses_rule_router_by_default(self):
         with patch.dict(os.environ, {}, clear=True):
             result, note = pipeline._select_route("IRP 세액공제는 얼마인가요?")
