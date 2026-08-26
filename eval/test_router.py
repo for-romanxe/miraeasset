@@ -53,6 +53,32 @@ class RouterTest(unittest.TestCase):
         self.assertIn("세제", result.categories)
         self.assertEqual(result.source, "rule")
 
+    def test_realistic_hcx_response_is_normalized(self):
+        raw = '''분류 결과입니다.
+```json
+{
+  "categories": "세제",
+  "age": null,
+  "amounts": null,
+  "account_types": "IRP",
+  "is_recommendation": false,
+  "out_of_scope": false,
+  "unsafe": false
+}
+```'''
+        result = route_from_hcx(raw, "IRP 세액공제는 얼마인가요?")
+        self.assertEqual(result.source, "hcx")
+        self.assertEqual(result.categories, ["세제"])
+
+    def test_normalization_does_not_bypass_enum_validation(self):
+        raw = json.dumps({
+            "categories": "주식", "age": None, "amounts": None,
+            "account_types": None, "is_recommendation": False,
+            "out_of_scope": False, "unsafe": False,
+        })
+        result = route_from_hcx(raw, "IRP 세액공제는 얼마인가요?")
+        self.assertEqual(result.source, "rule")
+
     def test_pipeline_uses_rule_router_by_default(self):
         with patch.dict(os.environ, {}, clear=True):
             result, note = pipeline._select_route("IRP 세액공제는 얼마인가요?")

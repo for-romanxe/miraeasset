@@ -140,11 +140,24 @@ def build_hcx_router_prompt(question: str) -> str:
 def route_from_hcx(raw: str, question: str) -> Route:
     """HCX JSON 응답을 Route로 변환하고, 잘못된 응답이면 규칙 라우터로 폴백한다."""
     try:
-        data = json.loads(raw)
+        # HCX가 JSON을 코드 펜스나 짧은 설명으로 감싸는 경우가 있으므로
+        # 첫 JSON 객체만 추출한다. 중괄호가 없으면 기존 규칙 라우터로 폴백한다.
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not match:
+            raise ValueError("라우터 JSON 객체 없음")
+        data = json.loads(match.group())
         required = {"categories", "age", "amounts", "account_types",
                     "is_recommendation", "out_of_scope", "unsafe"}
         if set(data) != required:
             raise ValueError("라우터 응답 키 불일치")
+
+        # 실제 HCX 출력에서 단일 값은 문자열, 빈 값은 null로 오는 변형을
+        # 허용하되 이후 enum·타입 검증은 그대로 적용한다.
+        for key in ("categories", "account_types", "amounts"):
+            if isinstance(data[key], str):
+                data[key] = [data[key]]
+            elif data[key] is None:
+                data[key] = []
         if (not isinstance(data["categories"], list)
                 or not set(data["categories"]) <= HCX_CATEGORIES
                 or not isinstance(data["account_types"], list)
