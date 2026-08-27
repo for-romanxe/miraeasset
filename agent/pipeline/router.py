@@ -92,6 +92,7 @@ class Route:
     assumptions: dict[str, str] = field(default_factory=dict)
     out_of_scope: bool = False
     unsafe: bool = False
+    source: str = "rule"
 
     def describe(self) -> str:
         s = f"유형={','.join(self.categories) or '일반'}"
@@ -139,14 +140,58 @@ def build_hcx_router_prompt(question: str) -> str:
 def route_from_hcx(raw: str, question: str) -> Route:
     """HCX JSON 응답을 Route로 변환하고, 잘못된 응답이면 규칙 라우터로 폴백한다."""
     try:
-        data = json.loads(raw)
-        required = {"categories", "age", "amounts", "account_types",
-                    "is_recommendation", "out_of_scope", "unsafe"}
-        if set(data) != required:
-            raise ValueError("라우터 응답 키 불일치")
+        # HCX가 JSON을 코드 펜스나 짧은 설명으로 감싸는 경우가 있으므로
+        # 첫 JSON 객체만 추출한다. 중괄호가 없으면 기존 규칙 라우터로 폴백한다.
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if not match:
+            raise ValueError("라우터 JSON 객체 없음")
+        # JSON 표준은 주석을 허용하지 않지만 HCX가 간혹 값 뒤에 설명용
+        # // 주석을 붙인다. 라우터 값에는 URL이 없으므로 줄 주석만 제거한다.
+        payload = re.sub(r"(?m)\s*//.*$", "", match.group())
+        data = json.loads(payload)
+        if not isinstance(data, dict):
+            raise ValueError("라우터 응답 객체 아님")
+        required = {"categories", "is_recommendation", "out_of_scope", "unsafe"}
+        if not required <= set(data):
+            raise ValueError("라우터 필수 키 누락")
+        data.setdefault("age", None)
+        data.setdefault("amounts", [])
+        data.setdefault("account_types", [])
+
+        # 실제 HCX 출력에서 단일 값은 문자열, 빈 값은 null로 오는 변형을
+        # 허용하되 이후 enum·타입 검증은 그대로 적용한다.
+        for key in ("categories", "account_types", "amounts"):
+            if isinstance(data[key], str):
+                data[key] = [data[key]] if data[key].strip() else []
+            elif data[key] is None:
+                data[key] = []
+        if isinstance(data["amounts"], dict):
+            data["amounts"] = list(data["amounts"].items())
+
+        # 계좌명은 실제 출력에서 정식 enum보다 구어 표현이 자주 나온다.
+        # 존재 여부만 추천 슬롯에 사용하므로 알려진 별칭은 표준화하고,
+        # 나머지 비어 있지 않은 값은 스키마의 '기타'로 축약한다.
+        normalized_accounts = []
+        for account in data["account_types"] if isinstance(data["account_types"], list) else []:
+            if not isinstance(account, str) or not account.strip():
+                continue
+            if "ISA" in account:
+                normalized = "ISA"
+            elif "IRP" in account or "개인형" in account:
+                normalized = "IRP"
+            elif "연금저축" in account:
+                normalized = "연금저축"
+            elif account == "DC" or "확정기여" in account:
+                normalized = "DC"
+            elif account == "DB" or "확정급여" in account:
+                normalized = "DB"
+            else:
+                normalized = "기타"
+            if normalized not in normalized_accounts:
+                normalized_accounts.append(normalized)
+        data["account_types"] = normalized_accounts
         if (not isinstance(data["categories"], list)
                 or not set(data["categories"]) <= HCX_CATEGORIES
-                or not isinstance(data["account_types"], list)
                 or not set(data["account_types"]) <= HCX_ACCOUNTS):
             raise ValueError("라우터 enum 불일치")
         for key in ("is_recommendation", "out_of_scope", "unsafe"):
@@ -157,7 +202,8 @@ def route_from_hcx(raw: str, question: str) -> Route:
 
     r = Route(categories=[c for c in data["categories"] if c != "일반"],
               is_recommendation=data["is_recommendation"],
-              out_of_scope=data["out_of_scope"], unsafe=data["unsafe"])
+              out_of_scope=data["out_of_scope"], unsafe=data["unsafe"],
+              source="hcx")
     if r.is_recommendation and "상품" in r.categories:
         r.filled_slots = {
             "account": bool(data["account_types"]),
