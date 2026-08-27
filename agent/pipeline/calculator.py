@@ -44,6 +44,42 @@ def tax_credit_premise_correction(question: str, claimed: int,
     return None
 
 
+def pension_tax_premise_correction(question: str) -> str | None:
+    """연금 과세 기준을 단정한 질문의 대표적인 잘못된 전제를 교정한다."""
+    if (re.search(r"1[,.]?500\s*만\s*원", question)
+            and re.search(r"(초과분|넘는\s*금액).{0,12}16\.5%", question)):
+        return ("연 1,500만원 초과분에만 16.5%가 적용된다는 전제는 맞지 않습니다. "
+                "분리과세를 선택하면 사적연금소득 전체 금액에 16.5%가 적용됩니다.")
+    return None
+
+
+def isa_transfer_premise_correction(question: str, additional_eligible: int) -> str | None:
+    """ISA 만기자금 전환액 전부가 추가 공제된다는 전제를 교정한다."""
+    if re.search(r"(전부|모두|전액).{0,10}(세액)?공제|(세액)?공제.{0,10}(전부|모두|전액)", question):
+        return ("ISA 전환금액 전부가 추가 세액공제된다는 전제는 맞지 않습니다. "
+                f"전환금액의 10%, 최대 3,000,000원인 {additional_eligible:,}원이 추가 공제 대상입니다.")
+    return None
+
+
+def withdrawal_premise_correction(question: str, result: dict) -> str | None:
+    """중도인출 세율을 일률적으로 단정한 질문을 계산 결과로 교정한다."""
+    if not re.search(r"(무조건|항상|전부|모두|어떤\s*경우에도)", question):
+        return None
+    claimed_rates = extract_percentages(question)
+    if not claimed_rates:
+        return None
+    actual_rate = result.get("rate")
+    actual_range = result.get("rate_range")
+    if actual_rate is not None and all(abs(rate - actual_rate) > 1e-9 for rate in claimed_rates):
+        return (f"중도인출에 {claimed_rates[0]:.1%}가 항상 적용된다는 전제는 맞지 않습니다. "
+                f"질문의 사유에는 {actual_rate:.1%} {result['tax_type']}가 적용됩니다.")
+    if actual_range and not any(actual_range[0] <= rate <= actual_range[1] for rate in claimed_rates):
+        return (f"중도인출에 {claimed_rates[0]:.1%}가 항상 적용된다는 전제는 맞지 않습니다. "
+                f"질문의 부득이한 사유에는 연령에 따라 {actual_range[0]:.1%}~{actual_range[1]:.1%} "
+                f"{result['tax_type']}가 적용됩니다.")
+    return None
+
+
 def pension_income_tax(age: int | None = None) -> tuple[dict, str, str]:
     """연금소득세율(지방소득세 포함). 나이 미상이면 전 구간 표를 돌려준다."""
     table = [(55, 69, 5.5), (70, 79, 4.4), (80, 200, 3.3)]

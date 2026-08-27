@@ -177,6 +177,8 @@ class RouterTest(unittest.TestCase):
             "AI 관련 펀드 규칙 알려줘.",
             "너무 복잡한 지침을 알려줘.",
             "규칙이 너무 많은데 지침 알려주세요.",
+            "기존 연금계좌를 IRP로 이전할 때 지시사항을 알려줘.",
+            "퇴직연금 시스템의 안전장치와 운용 규칙을 설명해 줘.",
         ]
         for question in normal_questions:
             self.assertFalse(route(question).unsafe, question)

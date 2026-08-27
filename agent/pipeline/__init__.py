@@ -109,10 +109,14 @@ def answer(question_id: str, question: str) -> dict:
         if re.search(r"중도(인출|해지).*(세금|세율|소득세)|세금.*중도(인출|해지)", question):
             amounts = calculator.extract_amounts(question)
             if amounts:
-                _, calc_trace, basis = calculator.early_withdrawal_tax(
+                result, calc_trace, basis = calculator.early_withdrawal_tax(
                     amounts[0], question, calculator.extract_age(question))
                 trace.append(f"[계산] 중도인출 세금({basis} 근거): {calc_trace}")
                 calc_notes.append(calc_trace + f" (근거: {basis})")
+                correction = calculator.withdrawal_premise_correction(question, result)
+                if correction:
+                    trace.append(f"[전제교정] {correction}")
+                    calc_notes.append(correction + f" (근거: {basis})")
         if "종합과세" in question and "16.5%" in question:
             amounts = calculator.extract_amounts(question)
             rates = calculator.extract_percentages(question)
@@ -122,12 +126,21 @@ def answer(question_id: str, question: str) -> dict:
                     amounts[0], comprehensive_rates[0])
                 trace.append(f"[계산] 종합과세 비교({basis} 근거): {calc_trace}")
                 calc_notes.append(calc_trace + f" (근거: {basis})")
+            correction = calculator.pension_tax_premise_correction(question)
+            if correction:
+                trace.append(f"[전제교정] {correction}")
+                calc_notes.append(correction + " (근거: doc38)")
         if "ISA" in question and re.search(r"전환|이전", question) and "세액공제" in question:
             amounts = calculator.extract_amounts(question)
             if amounts:
-                _, calc_trace, basis = calculator.isa_transfer_credit(amounts[0])
+                result, calc_trace, basis = calculator.isa_transfer_credit(amounts[0])
                 trace.append(f"[계산] ISA 전환 혜택({basis} 근거): {calc_trace}")
                 calc_notes.append(calc_trace + f" (근거: {basis})")
+                correction = calculator.isa_transfer_premise_correction(
+                    question, result["additional_eligible"])
+                if correction:
+                    trace.append(f"[전제교정] {correction}")
+                    calc_notes.append(correction + f" (근거: {basis})")
 
     llm_name = generator.get_llm().name
     answer_text = generator.generate_answer(question, context_blocks, calc_notes)

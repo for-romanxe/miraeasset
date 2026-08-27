@@ -2,7 +2,14 @@
 import unittest
 
 from agent.pipeline import answer
-from agent.pipeline.calculator import split_amounts_by_account, tax_credit
+from agent.pipeline.calculator import (
+    early_withdrawal_tax,
+    isa_transfer_premise_correction,
+    pension_tax_premise_correction,
+    split_amounts_by_account,
+    tax_credit,
+    withdrawal_premise_correction,
+)
 
 
 class AccountMappingTest(unittest.TestCase):
@@ -37,6 +44,23 @@ class TriggerTest(unittest.TestCase):
                          "연금저축 500만원 넣으면 얼마나 돌려받나요?"]:
             trace = answer("t", question)["think_trace"]
             self.assertIn("[계산] 세액공제", trace, question)
+
+
+class PremiseCorrectionTest(unittest.TestCase):
+    def test_private_pension_tax_applies_to_full_amount(self):
+        question = "사적연금 1,500만원 초과분에만 16.5% 분리과세하는 거죠?"
+        self.assertIn("전체 금액", pension_tax_premise_correction(question))
+
+    def test_isa_transfer_credit_is_ten_percent_with_cap(self):
+        correction = isa_transfer_premise_correction(
+            "ISA 만기자금 5,000만원을 옮기면 전액 세액공제되나요?", 3_000_000)
+        self.assertIn("최대 3,000,000원", correction)
+
+    def test_unavoidable_withdrawal_is_not_always_16_5_percent(self):
+        result, _, _ = early_withdrawal_tax(10_000_000, "개인회생", age=72)
+        correction = withdrawal_premise_correction(
+            "개인회생이어도 중도인출은 무조건 16.5% 세금이죠?", result)
+        self.assertIn("4.4% 연금소득세", correction)
 
 
 if __name__ == "__main__":
