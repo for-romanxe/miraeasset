@@ -78,6 +78,25 @@ class SentenceSplitTest(unittest.TestCase):
         self.assertEqual(sentences, ["답변입니다."])
 
 
+class SkipClaimsTest(unittest.TestCase):
+    """비교표 경로에서는 2단계를 생략한다 (#59 — 시나리오 D 오탐 10건 실측)."""
+
+    def test_skip_claims_leaves_trace_and_no_notice(self):
+        answer, trace = verifier.apply(
+            "위험등급은 5등급입니다.", ["| 위험등급 | 5등급 |"], [],
+            "hyperclova-x", skip_claims=True)
+        self.assertIn("비교표 경로", trace)
+        self.assertNotIn("※", answer)
+
+    def test_number_check_still_runs_when_claims_skipped(self):
+        """2단계만 생략 — 1단계 수치 대조는 비교표 경로에서도 유지돼야 한다."""
+        answer, trace = verifier.apply(
+            "총보수는 0.99%입니다.", ["| 최저 총보수(연) | 0.275% |"], [],
+            "hyperclova-x", skip_claims=True)
+        self.assertIn("미확인", trace)
+        self.assertIn("※", answer)
+
+
 class ClaimVerifyMockTest(unittest.TestCase):
     """CLOVASTUDIO_API_KEY 없이 돌리는 스위트라 MockLLM 경로만 검증한다."""
 

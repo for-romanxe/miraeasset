@@ -19,6 +19,7 @@ def answer(question_id: str, question: str) -> dict:
     trace: list[str] = []
     context_blocks: list[str] = []
     calc_notes: list[str] = []
+    has_table = False  # 비교표 경로 여부 — verifier 2단계 생략 판단에 쓴다 (#59)
 
     r, routing_note = _select_route(question)
     trace.append(f"[라우팅] {routing_note} | {r.describe()}")
@@ -54,6 +55,7 @@ def answer(question_id: str, question: str) -> dict:
         if len(hits) >= 2 and compare.wants_comparison(question):
             trace.append(f"[비교표] {len(hits)}개 펀드 6축 비교표 생성")
             context_blocks.append(compare.build_table(hits))
+            has_table = True
         context_blocks += [fund_brief(f) for f in hits]
 
     # 문서 검색 (제도·세제·절차·일반)
@@ -133,7 +135,7 @@ def answer(question_id: str, question: str) -> dict:
 
     # 검증: 답변 수치가 근거 밖에서 오지 않았는지 대조 (환각 방어 1차)
     answer_text, verify_trace = verifier.apply(
-        answer_text, context_blocks, calc_notes, llm_name)
+        answer_text, context_blocks, calc_notes, llm_name, skip_claims=has_table)
     trace.append(verify_trace)
 
     # 가정 명시: 빈 슬롯이 1개뿐이면 역질문 대신 가정을 밝히고 답한다.
