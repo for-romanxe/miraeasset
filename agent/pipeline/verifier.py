@@ -211,16 +211,25 @@ def verify_claims_llm(answer: str, context_blocks: list[str], calc_notes: list[s
 
 
 def apply(answer: str, context_blocks: list[str], calc_notes: list[str],
-          llm_name: str) -> tuple[str, str]:
+          llm_name: str, *, skip_claims: bool = False) -> tuple[str, str]:
     """검증을 수행하고 (필요 시 보정된 답변, 트레이스)를 돌려준다.
 
     미확인 수치나 미지지 문장이 있으면: Mock 단계에서는 기록만 남기고, 실제
     LLM 답변에는 확정 문장 대신 재확인 안내를 덧붙인다 (근거 없는 내용을
     단정하지 않기). 2단계는 1단계 결과와 무관하게 항상 실행한다 — "문자열은
     근거에 있지만 대상이 틀린" 경우는 1단계가 원리상 못 잡기 때문이다.
+
+    예외가 skip_claims=True(비교표 경로, #59): 비교표는 funds.json에서 코드로
+    만든 결정적 데이터라 의미 검증의 추가 가치가 없는데, 답변이 표를 목록으로
+    풀어 쓰면 상품명·항목 조각이 인용 매칭에 실패해 오탐이 난다 (시나리오 D
+    실측: 27문장 중 미지지 10건 — 전부 오탐). 수치는 1단계가 표와 대조해
+    그대로 잡으므로 2단계만 생략한다.
     """
     unmatched, trace = verify_numbers(answer, context_blocks, calc_notes)
-    unsupported, trace2 = verify_claims_llm(answer, context_blocks, calc_notes)
+    if skip_claims:
+        unsupported, trace2 = [], "[검증2] 비교표 경로 — 결정적 근거라 의미 검증 생략"
+    else:
+        unsupported, trace2 = verify_claims_llm(answer, context_blocks, calc_notes)
     if trace2:
         trace += "\n" + trace2
     if (unmatched or unsupported) and llm_name != "mock":
