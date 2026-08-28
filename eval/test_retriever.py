@@ -51,5 +51,19 @@ class RetrieverGeneralizationTest(unittest.TestCase):
         )
 
 
+    def test_benefit_payment_precheck_retrieves_staff_role_chunk(self):
+        hits = self.index.search(
+            "퇴직연금 사무담당자가 급여 지급 전에 확인할 사항은 뭔가요?",
+            k=5,
+        )
+        self.assertTrue(
+            any(
+                hit["doc_id"] == "doc55" and "사무담당자의 역할" in hit["text"]
+                for hit in hits
+            ),
+            "doc55의 DB 퇴직급여 사무담당자 역할 청크가 필요합니다.",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
