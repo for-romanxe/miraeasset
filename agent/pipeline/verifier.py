@@ -61,16 +61,51 @@ def _num_value(tok: str) -> float | None:
         return None
 
 
-def _derivable(target: str, evidence_nums: list[float]) -> bool:
-    """target이 근거 수치 두 개의 합·차로 정당하게 유도됐는지 확인."""
-    v = _num_value(target)
-    if v is None:
-        return False
+# 한국어 금액 표기: "115만 5천 원", "1,500만원", "5,500만" (원 생략), "1억 2,000만원".
+# HCX가 계산 결과 1,155,000원을 답변에서 이렇게 바꿔 쓰는 일이 흔해, 문자열
+# 대조만으로는 정답 수치가 미확인 판정돼 재확인 문구가 붙었다 (데모 실측).
+# 억·만이 최소 하나 있어야 매칭한다 — "1,155,000원" 같은 일반 표기는 기존 경로.
+_KAMOUNT = re.compile(
+    r"(?:(\d[\d,]*)\s*억)?\s*(?:(\d[\d,]*)\s*만)\s*(?:(\d[\d,]*)\s*천)?\s*원?"
+    r"|(\d[\d,]*)\s*억\s*원?")
+
+
+def _k_won(m: "re.Match") -> float:
+    def g(i):
+        return float(m.group(i).replace(",", "")) if m.group(i) else 0.0
+    if m.group(4):  # "3억" 단독
+        return g(4) * 100_000_000
+    return g(1) * 100_000_000 + g(2) * 10_000 + g(3) * 1_000
+
+
+def _percent_values(text: str) -> list[float]:
+    return [float(t.rstrip("%").replace(",", "")) for t in NUM.findall(text) if "%" in t]
+
+
+def _derivable_value(v: float, evidence_nums: list[float],
+                     evidence_pcts: list[float]) -> bool:
+    """v가 근거 수치의 합·차 또는 근거 수치 × 근거 % 로 유도되는지 확인.
+
+    곱셈 인정 근거: "400만 원의 16.5%는 66만 원" 같은 정당한 % 적용이
+    미확인 판정돼 재확인 문구를 만들었다 (데모 실측). 근거에 실재하는
+    수치 × 근거에 실재하는 %만 인정하므로 임의 수치는 통과하지 못한다."""
     for i, a in enumerate(evidence_nums):
         for b in evidence_nums[i + 1:]:
             if abs(a + b - v) < 0.5 or abs(a - b - v) < 0.5 or abs(b - a - v) < 0.5:
                 return True
+        for p in evidence_pcts:
+            if abs(a * p / 100.0 - v) < 0.5:
+                return True
     return False
+
+
+def _derivable(target: str, evidence_nums: list[float],
+               evidence_pcts: list[float] | None = None) -> bool:
+    """target 토큰이 근거 수치들로부터 정당하게 유도됐는지 확인."""
+    v = _num_value(target)
+    if v is None:
+        return False
+    return _derivable_value(v, evidence_nums, evidence_pcts or [])
 
 
 def _split_sentences(text: str) -> list[str]:
@@ -94,19 +129,39 @@ def verify_numbers(answer: str, context_blocks: list[str],
     evidence_text = " ".join(context_blocks) + " " + " ".join(calc_notes)
     evidence_norm = _normalize(evidence_text)
     evidence_nums = [v for v in (_num_value(n) for n in _numbers(evidence_text)) if v is not None]
-    nums = _numbers(answer)
-    if not nums:
+    # 근거의 한국어 금액("900만원")도 원 단위 값으로 집합에 넣는다
+    evidence_nums += [_k_won(m) for m in _KAMOUNT.finditer(evidence_text)]
+    evidence_vals = {round(v) for v in evidence_nums}
+    evidence_pcts = _percent_values(evidence_text)
+
+    # 답변의 한국어 금액은 통째로 값 대조한다 — 토큰화하면 "115만 5천 원"이
+    # "115"와 "5"로 쪼개져 어떤 문자열 대조로도 살아남지 못한다.
+    unmatched, derived, k_count, k_ok = [], [], 0, 0
+    masked = answer
+    for m in _KAMOUNT.finditer(answer):
+        k_count += 1
+        v = _k_won(m)
+        masked = masked.replace(m.group(0), " ", 1)
+        if round(v) in evidence_vals:
+            k_ok += 1
+        elif _derivable_value(v, evidence_nums, evidence_pcts):
+            derived.append(m.group(0).strip().rstrip("원").strip() + "원")
+        else:
+            unmatched.append(m.group(0).strip())
+
+    nums = _numbers(masked)
+    if not nums and not k_count:
         return [], "[검증] 답변에 수치 없음 — 수치 검증 통과"
-    unmatched, derived = [], []
     for n in nums:
         if _normalize(n).rstrip("%") in evidence_norm:
             continue
-        if _derivable(n, evidence_nums):
+        if _derivable(n, evidence_nums, evidence_pcts):
             derived.append(n)
             continue
         unmatched.append(n)
-    ok = len(nums) - len(unmatched) - len(derived)
-    parts = [f"답변 수치 {len(nums)}개 중 {ok}개 근거 확인"]
+    total = len(nums) + k_count
+    ok = total - len(unmatched) - len(derived)
+    parts = [f"답변 수치 {total}개 중 {ok}개 근거 확인"]
     if derived:
         parts.append(f"유도 산술 인정 {len(derived)}개({', '.join(derived[:5])})")
     if unmatched:

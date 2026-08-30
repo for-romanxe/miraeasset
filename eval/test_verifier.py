@@ -16,7 +16,7 @@ class NumberMatchTest(unittest.TestCase):
         unmatched, trace = verifier.verify_numbers(
             "IRP는 연간 700만원까지 세액공제됩니다.",
             ["연금저축은 600만원, IRP는 합산 900만원까지 세액공제"], [])
-        self.assertIn("700", unmatched)
+        self.assertTrue(any("700" in u for u in unmatched), unmatched)
 
 
 class DerivableArithmeticTest(unittest.TestCase):
@@ -41,13 +41,53 @@ class DerivableArithmeticTest(unittest.TestCase):
         unmatched, _ = verifier.verify_numbers(
             "세액공제 한도는 700만원입니다.",
             ["연금저축 600만원", "IRP 합산 900만원"], [])
-        self.assertIn("700", unmatched)
+        self.assertTrue(any("700" in u for u in unmatched), unmatched)
 
     def test_percent_tokens_excluded_from_arithmetic(self):
         """%는 금액과 단위가 달라 합·차 유도 대상에서 제외해야 한다."""
         unmatched, _ = verifier.verify_numbers(
             "세율은 21.5%입니다.", ["세율 16.5%", "가산율 5%"], [])
         self.assertIn("21.5%", unmatched)
+
+
+class KoreanNotationTest(unittest.TestCase):
+    """한국어 금액 표기 동치 — 데모 실측: 계산 결과 1,155,000원을 답변이
+    "115만 5천 원"으로 바꿔 써서 정답에 재확인 문구가 붙었다."""
+
+    def test_korean_amount_matches_digit_evidence(self):
+        unmatched, trace = verifier.verify_numbers(
+            "합계는 115만 5천 원입니다.", [], ["세액공제 = 1,155,000원"])
+        self.assertEqual(unmatched, [])
+        self.assertIn("1개 근거 확인", trace)
+
+    def test_korean_amount_without_won_suffix(self):
+        unmatched, _ = verifier.verify_numbers(
+            "총급여 5,500만 이하라면 적용됩니다.", ["총급여액 5,500만원 이하"], [])
+        self.assertEqual(unmatched, [])
+
+    def test_wrong_korean_amount_still_flagged(self):
+        unmatched, _ = verifier.verify_numbers(
+            "합계는 120만 원입니다.", [], ["세액공제 = 1,155,000원"])
+        self.assertEqual(unmatched, ["120만 원"])
+
+
+class MultiplicationDerivationTest(unittest.TestCase):
+    """근거 수치 × 근거 % 유도 인정 — 데모 실측: "400만 원의 16.5%는 66만 원"이
+    정당한 계산인데 미확인 판정됐다."""
+
+    def test_percent_application_is_derived(self):
+        unmatched, trace = verifier.verify_numbers(
+            "400만 원의 16.5%인 66만 원을 공제받습니다.",
+            ["연금저축 4,000,000원까지 16.5% 세액공제"], [])
+        self.assertEqual(unmatched, [])
+        self.assertIn("유도 산술 인정", trace)
+
+    def test_wrong_product_still_flagged(self):
+        """근거 수치 × 근거 %로 안 나오는 값은 여전히 미확인."""
+        unmatched, _ = verifier.verify_numbers(
+            "공제액은 77만 원입니다.",
+            ["연금저축 4,000,000원까지 16.5% 세액공제"], [])
+        self.assertEqual(unmatched, ["77만 원"])
 
 
 class SentenceSplitTest(unittest.TestCase):
