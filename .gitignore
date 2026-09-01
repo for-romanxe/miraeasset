@@ -5,3 +5,4 @@ __pycache__/
 .claude/
 .env
 .env.*
+eval/manual_qa/*-리포트.md
