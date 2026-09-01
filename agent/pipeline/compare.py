@@ -7,6 +7,8 @@
 """
 from __future__ import annotations
 
+from .retriever import format_aum
+
 COMPARE_HINT = ("비교", "차이", "달라", "다른가", "다르", "뭐가 나", "어떤 게")
 
 
@@ -43,7 +45,7 @@ def build_table(funds: list[dict]) -> str:
         if (f.get("returns") or {}).get("y1") is not None else None)
     row("3년 수익률", lambda f: f"{(f.get('returns') or {}).get('y3')}%"
         if (f.get("returns") or {}).get("y3") is not None else None)
-    row("순자산(백만원)", lambda f: f"{f.get('aum'):,.0f}" if f.get("aum") else None)
+    row("순자산", lambda f: format_aum(f.get("aum")) if f.get("aum") else None)
 
     sources = "; ".join(
         f"{f.get('isin')}: {f.get('source', {}).get('file')} "

@@ -89,7 +89,10 @@ def answer(question_id: str, question: str) -> dict:
                     calc_notes.append(correction + f" (근거: {basis})")
             else:
                 trace.append("[계산] 금액 미제시 → 한도 정보만 근거로 제공")
-        if re.search(r"연금소득세|받을 때.*세[금율]|수령.*세[금율]|세율", question):
+        # 중도인출·해지 질의는 아래 중도인출 분기가 담당한다. "세율" 한 단어에
+        # 수령 시 연금소득세 표가 끼어들면 엉뚱한 근거가 된다 (300문 QA 세제 #58).
+        if (re.search(r"연금소득세|받을 때.*세[금율]|수령.*세[금율]|세율", question)
+                and not re.search(r"중도\s*(인출|해지)", question)):
             _, calc_trace, basis = calculator.pension_income_tax(
                 calculator.extract_age(question))
             trace.append(f"[계산] 연금소득세({basis} 근거): {calc_trace}")
@@ -108,24 +111,28 @@ def answer(question_id: str, question: str) -> dict:
                 calc_notes.append(calc_trace + f" (근거: {basis})")
         if re.search(r"중도(인출|해지).*(세금|세율|소득세)|세금.*중도(인출|해지)", question):
             amounts = calculator.extract_amounts(question)
-            if amounts:
-                result, calc_trace, basis = calculator.early_withdrawal_tax(
-                    amounts[0], question, calculator.extract_age(question))
-                trace.append(f"[계산] 중도인출 세금({basis} 근거): {calc_trace}")
-                calc_notes.append(calc_trace + f" (근거: {basis})")
-                correction = calculator.withdrawal_premise_correction(question, result)
-                if correction:
-                    trace.append(f"[전제교정] {correction}")
-                    calc_notes.append(correction + f" (근거: {basis})")
-        if "종합과세" in question and "16.5%" in question:
-            amounts = calculator.extract_amounts(question)
-            rates = calculator.extract_percentages(question)
-            comprehensive_rates = [rate for rate in rates if rate != 0.165]
-            if amounts and comprehensive_rates:
-                _, calc_trace, basis = calculator.private_pension_tax_comparison(
-                    amounts[0], comprehensive_rates[0])
-                trace.append(f"[계산] 종합과세 비교({basis} 근거): {calc_trace}")
-                calc_notes.append(calc_trace + f" (근거: {basis})")
+            # 금액이 없으면 세율만 안내한다 (amount=None 경로)
+            result, calc_trace, basis = calculator.early_withdrawal_tax(
+                amounts[0] if amounts else None, question,
+                calculator.extract_age(question))
+            trace.append(f"[계산] 중도인출 세금({basis} 근거): {calc_trace}")
+            calc_notes.append(calc_trace + f" (근거: {basis})")
+            correction = calculator.withdrawal_premise_correction(question, result)
+            if correction:
+                trace.append(f"[전제교정] {correction}")
+                calc_notes.append(correction + f" (근거: {basis})")
+        if "종합과세" in question:
+            # 비교 계산은 16.5%와 종합세율이 함께 제시된 질의에서만.
+            # 전제교정은 "무조건 종합과세죠?"처럼 16.5% 언급이 없어도 돌아야 한다.
+            if "16.5%" in question:
+                amounts = calculator.extract_amounts(question)
+                rates = calculator.extract_percentages(question)
+                comprehensive_rates = [rate for rate in rates if rate != 0.165]
+                if amounts and comprehensive_rates:
+                    _, calc_trace, basis = calculator.private_pension_tax_comparison(
+                        amounts[0], comprehensive_rates[0])
+                    trace.append(f"[계산] 종합과세 비교({basis} 근거): {calc_trace}")
+                    calc_notes.append(calc_trace + f" (근거: {basis})")
             correction = calculator.pension_tax_premise_correction(question)
             if correction:
                 trace.append(f"[전제교정] {correction}")
