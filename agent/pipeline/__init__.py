@@ -179,7 +179,9 @@ def answer(question_id: str, question: str) -> dict:
     # 검증: 답변 수치가 근거 밖에서 오지 않았는지 대조 (환각 방어 1차)
     answer_text, verify_trace = verifier.apply(
         answer_text, context_blocks, calc_notes, llm_name, skip_claims=has_table,
-        question=question)
+        question=question,
+        regenerate=lambda unsup: generator.regenerate_answer(
+            question, context_blocks, calc_notes, unsup))
     trace.append(verify_trace)
 
     # 가정 명시: 빈 슬롯이 1개뿐이면 역질문 대신 가정을 밝히고 답한다.
