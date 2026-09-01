@@ -118,6 +118,35 @@ class SentenceSplitTest(unittest.TestCase):
         self.assertEqual(sentences, ["답변입니다."])
 
 
+class NonClaimFilterTest(unittest.TestCase):
+    """한계 고지·거절 정형구는 검증2 대상에서 제외한다 (승빈 QA 101~200 실측).
+
+    이런 메타 진술을 검증2에 보내면 근거 인용을 못 찾아 미지지로 찍고
+    재확인 문구(※)를 붙여, 정상적인 정보한계·단정거절 답변의 신뢰를 깎았다."""
+
+    LIMITATION = [
+        "제공된 자료로는 오늘 코스피 지수에 대해 알 수 없습니다.",
+        "제공된 자료에는 실패 없는 상품을 명시한 내용이 없습니다.",
+        "공시된 펀드 보수에 대한 구체적인 내용을 찾을 수 없습니다.",
+        "환율 변동에 따른 투자의 적절성을 판단하기 어렵습니다.",
+        "특정 상품을 단정적으로 추천할 수 없습니다.",
+        "관련 정보가 포함되어 있지 않으므로 답변을 제공할 수 없습니다.",
+    ]
+    REAL_CLAIM = [
+        "안정 모드로 운용한다는 것은 위험이 낮은 상품을 의미합니다.",
+        "연금저축 세액공제 한도는 연 600만원입니다.",
+        "IRP는 만 55세 이후 연금으로 수령할 수 있습니다.",
+    ]
+
+    def test_limitation_statements_excluded(self):
+        for s in self.LIMITATION:
+            self.assertTrue(verifier._NON_CLAIM.search(s), s)
+
+    def test_real_claims_still_checked(self):
+        for s in self.REAL_CLAIM:
+            self.assertIsNone(verifier._NON_CLAIM.search(s), s)
+
+
 class SkipClaimsTest(unittest.TestCase):
     """비교표 경로에서는 2단계를 생략한다 (#59 — 시나리오 D 오탐 10건 실측)."""
 
