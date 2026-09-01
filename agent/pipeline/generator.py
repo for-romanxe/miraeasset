@@ -93,3 +93,20 @@ def build_prompt(question: str, context_blocks: list[str], calc_notes: list[str]
 def generate_answer(question: str, context_blocks: list[str], calc_notes: list[str]) -> str:
     llm = get_llm()
     return llm.generate(build_prompt(question, context_blocks, calc_notes))
+
+
+def regenerate_answer(question: str, context_blocks: list[str], calc_notes: list[str],
+                      unsupported: list[str]) -> str:
+    """검증이 미지지로 판정한 문장을 지목해 답변을 1회 다시 쓰게 한다 (#62 세션).
+
+    verifier가 재생성 콜백으로 호출한다. 미지지 문장만 콕 집어 "근거에서
+    확인되는 내용으로 고치거나, 확인 안 되면 그 부분만 한계 고지로 바꾸라"고
+    지시한다 — 답변 전체를 버리지 않고 문제 문장만 교정하도록 유도한다."""
+    joined = "\n".join(f"- {s}" for s in unsupported[:8])
+    prompt = build_prompt(question, context_blocks, calc_notes) + (
+        "\n\n[재작성 지시] 방금 답변 중 아래 문장은 [근거]로 뒷받침되지 "
+        "않았습니다:\n" + joined + "\n이 문장들을 [근거]에서 확인되는 내용으로 "
+        "고치거나, 확인되지 않으면 그 부분만 \"제공된 자료로는 확인할 수 "
+        "없습니다\"로 바꿔 답변 전체를 자연스럽게 다시 작성하십시오. "
+        "나머지 정확한 내용은 그대로 유지하십시오.")
+    return get_llm().generate(prompt)
