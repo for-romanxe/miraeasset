@@ -118,6 +118,24 @@ class SentenceSplitTest(unittest.TestCase):
         self.assertEqual(sentences, ["답변입니다."])
 
 
+class QuestionNumberTest(unittest.TestCase):
+    """질문의 수치를 답변이 되풀이하는 것은 환각이 아니다 (300문 QA 실측)."""
+
+    def test_question_number_restated_in_answer_passes(self):
+        unmatched, _ = verifier.verify_numbers(
+            "수령액이 연 1,600만 원이면 1,500만 원을 초과하므로 선택이 필요합니다.",
+            ["연 1,500만원 초과 수령 시 종합과세 또는 16.5% 분리과세"], [],
+            question="수령액이 연 1,600만원이면 무조건 종합과세인가요?")
+        self.assertEqual(unmatched, [])
+
+    def test_number_absent_from_question_and_evidence_still_flagged(self):
+        unmatched, _ = verifier.verify_numbers(
+            "약 9억 원 이하 주택이 대상입니다.",
+            ["퇴직연금 관련 근거"], [],
+            question="주택연금 가입 조건이 궁금해요.")
+        self.assertEqual(unmatched, ["9억 원"])
+
+
 class NonClaimFilterTest(unittest.TestCase):
     """한계 고지·거절 정형구는 검증2 대상에서 제외한다 (승빈 QA 101~200 실측).
 

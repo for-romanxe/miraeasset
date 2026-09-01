@@ -138,9 +138,16 @@ def _split_sentences(text: str) -> list[str]:
 
 
 def verify_numbers(answer: str, context_blocks: list[str],
-                   calc_notes: list[str]) -> tuple[list[str], str]:
-    """답변 수치가 근거에 존재하는지 검사. (미확인 수치 목록, 트레이스) 반환."""
-    evidence_text = " ".join(context_blocks) + " " + " ".join(calc_notes)
+                   calc_notes: list[str], question: str = "") -> tuple[list[str], str]:
+    """답변 수치가 근거에 존재하는지 검사. (미확인 수치 목록, 트레이스) 반환.
+
+    질문 텍스트도 대조 대상에 포함한다 — "수령액이 1,600만원이면?"에 답하며
+    1,600을 되풀이하는 것은 환각이 아닌데, 근거에만 대조하면 미확인으로
+    찍혔다 (300문 QA 실측: 세제 리포트 미확인 13건 중 절반이 질문 수치
+    재진술). 질문의 틀린 전제를 확인 없이 승인하는 문제는 검증2와
+    전제교정의 몫이다 — 검증1은 존재 대조만 한다."""
+    evidence_text = (" ".join(context_blocks) + " " + " ".join(calc_notes)
+                     + " " + question)
     evidence_norm = _normalize(evidence_text)
     evidence_nums = [v for v in (_num_value(n) for n in _numbers(evidence_text)) if v is not None]
     # 근거의 한국어 금액("900만원")도 원 단위 값으로 집합에 넣는다
@@ -284,7 +291,8 @@ def verify_claims_llm(answer: str, context_blocks: list[str], calc_notes: list[s
 
 
 def apply(answer: str, context_blocks: list[str], calc_notes: list[str],
-          llm_name: str, *, skip_claims: bool = False) -> tuple[str, str]:
+          llm_name: str, *, skip_claims: bool = False,
+          question: str = "") -> tuple[str, str]:
     """검증을 수행하고 (필요 시 보정된 답변, 트레이스)를 돌려준다.
 
     미확인 수치나 미지지 문장이 있으면: Mock 단계에서는 기록만 남기고, 실제
@@ -298,7 +306,7 @@ def apply(answer: str, context_blocks: list[str], calc_notes: list[str],
     실측: 27문장 중 미지지 10건 — 전부 오탐). 수치는 1단계가 표와 대조해
     그대로 잡으므로 2단계만 생략한다.
     """
-    unmatched, trace = verify_numbers(answer, context_blocks, calc_notes)
+    unmatched, trace = verify_numbers(answer, context_blocks, calc_notes, question)
     if skip_claims:
         unsupported, trace2 = [], "[검증2] 비교표 경로 — 결정적 근거라 의미 검증 생략"
     else:
