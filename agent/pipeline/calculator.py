@@ -50,6 +50,14 @@ def pension_tax_premise_correction(question: str) -> str | None:
             and re.search(r"(초과분|넘는\s*금액).{0,12}16\.5%", question)):
         return ("연 1,500만원 초과분에만 16.5%가 적용된다는 전제는 맞지 않습니다. "
                 "분리과세를 선택하면 사적연금소득 전체 금액에 16.5%가 적용됩니다.")
+    # "1,600만원이면 무조건 종합과세인가요?" — 300문 QA 실측에서 답변이 "네, 무조건
+    # 종합과세입니다"로 전제를 승인했다. 1,500만원 초과여도 분리과세 선택지가 있다.
+    if re.search(r"(무조건|항상|반드시|예외\s*없이|꼭)[^.?!]{0,10}종합\s*과세"
+                 r"|종합\s*과세[^.?!]{0,10}(무조건|항상|반드시|확정)", question):
+        amounts = extract_amounts(question)
+        if not amounts or max(amounts) > 15_000_000:
+            return ("연 1,500만원을 초과해도 무조건 종합과세되는 것은 아닙니다. "
+                    "종합과세와 16.5% 분리과세 중 선택할 수 있습니다.")
     return None
 
 
@@ -123,14 +131,24 @@ QUALIFYING_CARE = re.compile(
     r"요양.{0,8}([3-9]|\d{2,})\s*개월(?:\s*이상)?)")
 
 
-def early_withdrawal_tax(amount: int, reason: str = "일반",
+def early_withdrawal_tax(amount: int | None, reason: str = "일반",
                          age: int | None = None) -> tuple[dict, str, str]:
-    """세액공제 납입금·운용수익의 중도인출 세금을 계산."""
+    """세액공제 납입금·운용수익의 중도인출 세금을 계산.
+
+    amount가 None이면 세율만 안내한다 — "6개월 요양인데 중도인출 세율이 어떻게
+    되죠?"처럼 금액 없는 질의에서 계산기가 통째로 빠져 LLM이 세율을 지어내던
+    실측 결함(300문 QA 세제 #58) 대응.
+    """
     unavoidable = bool(UNAVOIDABLE_REASONS.search(reason) or QUALIFYING_CARE.search(reason))
     if unavoidable:
         tax_type = "연금소득세"
         note = "세법상 부득이한 사유"
         if age is None:
+            if amount is None:
+                trace = (f"중도인출 세율: 질문의 사유는 {note} → 연령에 따라 "
+                         f"3.3%~5.5% {tax_type} (부득이한 사유가 아니면 16.5% 기타소득세)")
+                return {"tax": None, "rate": None, "rate_range": (0.033, 0.055),
+                        "tax_type": tax_type, "unavoidable": True}, trace, "doc20, doc46~doc50"
             min_tax, max_tax = amount * 0.033, amount * 0.055
             trace = (f"중도인출 {amount:,}원: {reason}은 {note} → 연령에 따라 3.3%~5.5% "
                      f"{tax_type}({min_tax:,.0f}원~{max_tax:,.0f}원)")
@@ -142,6 +160,10 @@ def early_withdrawal_tax(amount: int, reason: str = "일반",
         rate = 0.165
         tax_type = "기타소득세"
         note = "세법상 부득이한 사유 아님"
+    if amount is None:
+        trace = f"중도인출 세율: {note} → {rate:.1%} {tax_type}"
+        return {"tax": None, "rate": rate, "tax_type": tax_type,
+                "unavoidable": unavoidable}, trace, "doc20, doc46~doc50"
     tax = amount * rate
     trace = (f"중도인출 {amount:,}원 × {rate:.1%} {tax_type} "
              f"({reason}: {note}) = {tax:,.0f}원")

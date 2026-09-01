@@ -62,6 +62,40 @@ class PremiseCorrectionTest(unittest.TestCase):
             "개인회생이어도 중도인출은 무조건 16.5% 세금이죠?", result)
         self.assertIn("4.4% 연금소득세", correction)
 
+    def test_comprehensive_tax_is_not_unconditional(self):
+        """"무조건 종합과세" 단정을 16.5% 언급 없이도 교정한다 (300문 QA 세제 #26)."""
+        correction = pension_tax_premise_correction(
+            "수령액이 연 1,600만원이면 무조건 종합과세인가요?")
+        self.assertIn("선택할 수 있습니다", correction)
+        # 파이프라인에서도 전제교정이 calc_notes로 들어가는지 확인
+        trace = answer("t", "수령액이 연 1,600만원이면 무조건 종합과세인가요?")["think_trace"]
+        self.assertIn("[전제교정]", trace)
+
+    def test_comprehensive_tax_correction_skips_below_threshold(self):
+        """1,500만원 이하 금액이 명시된 질문에는 초과-선택지 교정을 붙이지 않는다."""
+        self.assertIsNone(pension_tax_premise_correction(
+            "수령액이 연 1,200만원이면 무조건 종합과세인가요?"))
+
+
+class RateOnlyWithdrawalTest(unittest.TestCase):
+    def test_care_withdrawal_without_amount_gets_rate_note(self):
+        """금액 없는 중도인출 세율 질의도 계산기가 세율을 근거로 준다 (세제 #58)."""
+        result, trace, _ = early_withdrawal_tax(
+            None, "6개월 요양 진단받았는데 중도인출 세율이 어떻게 되죠?")
+        self.assertTrue(result["unavoidable"])
+        self.assertIn("3.3%~5.5% 연금소득세", trace)
+
+    def test_general_withdrawal_without_amount_gets_16_5(self):
+        result, trace, _ = early_withdrawal_tax(None, "그냥 중도인출하면 세율이 어떻게 되나요?")
+        self.assertEqual(result["rate"], 0.165)
+        self.assertIn("16.5% 기타소득세", trace)
+
+    def test_pipeline_uses_withdrawal_calc_not_pension_income_table(self):
+        """"세율" 단어로 수령 시 연금소득세 표가 끼어들지 않는다."""
+        trace = answer("t", "6개월 요양 진단받았는데 중도인출 세율이 어떻게 되죠?")["think_trace"]
+        self.assertIn("[계산] 중도인출 세금", trace)
+        self.assertNotIn("[계산] 연금소득세", trace)
+
 
 if __name__ == "__main__":
     unittest.main()

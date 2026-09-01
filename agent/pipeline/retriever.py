@@ -201,12 +201,22 @@ class FundsIndex:
         return out[:k]
 
 
+def format_aum(aum: float) -> str:
+    """순자산(백만원 단위)을 억원 환산과 함께 표기한다.
+
+    "4,426백만원"만 주면 HCX가 "4,426억원"으로 단위를 바꿔 쓴 실측 사례(300문 QA)가
+    있어, 올바른 억원 값을 병기해 모델이 그대로 옮기게 한다.
+    """
+    return f"{aum:,.0f}백만원(약 {aum / 100:,.0f}억원)"
+
+
 def fund_brief(f: dict) -> str:
     """근거 표시에 쓰는 펀드 한 줄 요약 (출처 파일 포함)."""
     ret = f.get("returns") or {}
+    aum = f.get("aum")
     return (f"{f.get('fund_name')} | 위험 {f.get('risk_grade')}등급({f.get('risk_label')}) "
             f"| {f.get('asset_type')} | 최저 총보수 {f.get('min_total_fee')}% "
-            f"| 1년 수익률 {ret.get('y1')}% | 순자산 {f.get('aum')}백만원 "
+            f"| 1년 수익률 {ret.get('y1')}% | 순자산 {format_aum(aum) if aum else aum} "
             f"| 근거: {f.get('source', {}).get('file')} "
             f"p{f.get('source', {}).get('summary_page')} (작성기준 {f.get('base_date')})")
 

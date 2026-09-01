@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agent.pipeline.retriever import get_docs_index  # noqa: E402
+from agent.pipeline.retriever import format_aum, get_docs_index  # noqa: E402
 
 
 class RetrieverGeneralizationTest(unittest.TestCase):
@@ -63,6 +63,13 @@ class RetrieverGeneralizationTest(unittest.TestCase):
             ),
             "doc55의 DB 퇴직급여 사무담당자 역할 청크가 필요합니다.",
         )
+
+
+class AumFormatTest(unittest.TestCase):
+    def test_aum_shows_correct_eok_conversion(self):
+        """"4,426백만원"만 주면 HCX가 "4,426억"으로 바꿔 쓴다 — 올바른 억원 병기."""
+        self.assertEqual(format_aum(4426), "4,426백만원(약 44억원)")
+        self.assertEqual(format_aum(1827), "1,827백만원(약 18억원)")
 
 
 if __name__ == "__main__":
