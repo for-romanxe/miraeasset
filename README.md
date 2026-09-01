@@ -34,6 +34,25 @@ curl -G "http://localhost:8000/answer" \
   --data-urlencode "question=연금저축이랑 IRP 세액공제 한도가 얼마인가요?"
 ```
 
+Windows 명령 프롬프트에서는 다음처럼 실행한다.
+
+```bat
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+python -m pip install -r requirements.txt
+python -m uvicorn agent.server:app --host 0.0.0.0 --port 8000
+```
+
+HCX를 사용할 때만 저장소 루트의 `.env`에
+`CLOVASTUDIO_API_KEY=<발급받은 키>`를 저장하고, 실행 전에 현재 CMD 세션으로 읽는다.
+`.env`는 Git에서 제외된다. 키 없이 실행하면 MockLLM을 사용하므로 검색·계산·회귀 평가는
+HCX 토큰을 소비하지 않는다.
+
+```bat
+for /f "tokens=2 delims==" %A in (.env) do @set CLOVASTUDIO_API_KEY=%A
+python eval\run_eval.py
+```
+
 파이프라인: 라우터(유형·슬롯 판정) → 검색(docs BM25 + funds 정형 조회) →
 세제 계산기 → 생성(근거 고정 프롬프트) → 검증(수치 대조) → 출처 표기.
 조건이 빈 추천 질의는 역질문으로 분기.
@@ -54,6 +73,14 @@ CLOVASTUDIO_API_KEY=<키> ./scripts/deploy.sh   # docker build + 80포트 기동
 | `llm_judge.py` | 답변 문장 품질 LLM 채점 (4축 루브릭, 키 없으면 드라이런) |
 | `perf.py` | 콜드스타트·문항당 지연 측정 (LLM 제외) |
 | `load_test.py` | 실행 중인 API에 전체 평가셋을 순차·동시 요청해 상태코드·스키마·지연 추세 측정 |
+
+HCX 토큰 없이 전체 로컬 검증:
+
+```bash
+python eval/run_eval.py
+python -m unittest discover -s eval -p "test_*.py"
+python eval/perf.py
+```
 
 ## 데이터 파이프라인 (parser/)
 
