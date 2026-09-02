@@ -96,6 +96,14 @@ class RateOnlyWithdrawalTest(unittest.TestCase):
         self.assertIn("[계산] 중도인출 세금", trace)
         self.assertNotIn("[계산] 연금소득세", trace)
 
+    def test_isa_transfer_triggers_without_full_term(self):
+        """'세액공제' 풀네임 없이 "추가 공제"로 물어도 ISA 계산기가 돈다 (재실행 #81).
+
+        계산기가 빠지면 2,000만원 케이스(정답 200만원)에 한도값 300만원을 답했다."""
+        trace = answer("t", "ISA 만기자금 2,000만원을 연금저축으로 옮기면 추가 공제가 얼마죠?")["think_trace"]
+        self.assertIn("[계산] ISA 전환 혜택", trace)
+        self.assertIn("2,000,000", trace)
+
     def test_colloquial_break_triggers_withdrawal_calc(self):
         """"IRP 깨는 세금"처럼 구어로 물어도 계산기가 돈다 (승빈 QA #251).
 

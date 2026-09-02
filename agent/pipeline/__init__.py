@@ -141,7 +141,11 @@ def answer(question_id: str, question: str) -> dict:
             if correction:
                 trace.append(f"[전제교정] {correction}")
                 calc_notes.append(correction + " (근거: doc38)")
-        if "ISA" in question and re.search(r"전환|이전", question) and "세액공제" in question:
+        # "추가 공제가 얼마죠"처럼 '세액공제' 풀네임 없이 물으면 계산기가 빠져
+        # 2,000만원 케이스에 한도값 300만원을 답했다 (300문 재실행 #81) —
+        # 공제·혜택·옮기 표현까지 트리거를 넓힌다.
+        if "ISA" in question and re.search(r"전환|이전|옮기", question) \
+                and re.search(r"공제|혜택", question):
             amounts = calculator.extract_amounts(question)
             if amounts:
                 result, calc_trace, basis = calculator.isa_transfer_credit(amounts[0])
