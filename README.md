@@ -4,6 +4,17 @@
 주최 측 배포 데이터(투자설명서 PDF 100건 + 안내문서 58건)를 정형 데이터로 변환하고,
 이를 근거로 답하는 평가용 API 서버를 만든다.
 
+## 평가용 엔드포인트
+
+```
+GET http://211.188.62.72/answer?question_id=<id>&question=<질문>
+```
+
+- 팀명: 상상기업 (pen-017) / NCP 서버 `pen017api` (KR-1), HTTP 80
+- 헬스체크: `GET http://211.188.62.72/health`
+- 응답은 평가 명세의 5필드 JSON (question_id / question / retrieved_context / think_trace / answer)
+- 운영 기간: 2026-09-07 ~ 09-20 (24시간)
+
 ## 작업 규칙 (PR 워크플로)
 
 main에 직접 푸시하지 않는다 (플랜 제약으로 강제 장치가 없으니 서로 약속).
@@ -64,6 +75,10 @@ API 스키마·응답 유형별 동작은 [docs/API.md](docs/API.md) 참고.
 ```bash
 CLOVASTUDIO_API_KEY=<키> ./scripts/deploy.sh   # docker build + 80포트 기동 + 헬스체크
 ```
+
+현재 배포: `pen017api` (s2-g3a, ubuntu-24.04, 공인 IP 211.188.62.72).
+서버 반입은 `git archive` tarball을 scp → `/root/pension-agent`에서 deploy.sh 실행.
+컨테이너는 `--restart always`라 재부팅에도 자동 복구된다.
 
 ### 평가·측정 도구 (eval/)
 
