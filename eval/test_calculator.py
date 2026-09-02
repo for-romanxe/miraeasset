@@ -96,6 +96,15 @@ class RateOnlyWithdrawalTest(unittest.TestCase):
         self.assertIn("[계산] 중도인출 세금", trace)
         self.assertNotIn("[계산] 연금소득세", trace)
 
+    def test_colloquial_break_triggers_withdrawal_calc(self):
+        """"IRP 깨는 세금"처럼 구어로 물어도 계산기가 돈다 (승빈 QA #251).
+
+        계산기가 빠지면 HCX가 15.4% 같은 근거 없는 세율을 지어냈다."""
+        for question in ["IRP 깨는 세금 알려줘.", "연금저축 헐면 세금 얼마나 떼요?"]:
+            trace = answer("t", question)["think_trace"]
+            self.assertIn("[계산] 중도인출 세금", trace, question)
+            self.assertIn("16.5%", trace, question)
+
 
 if __name__ == "__main__":
     unittest.main()
