@@ -209,5 +209,23 @@ class ApplyTest(unittest.TestCase):
         self.assertNotIn("[검증2]", trace)
 
 
+class PromptFactWhitelistTest(unittest.TestCase):
+    """CONFUSABLE_FACTS의 한도·세율은 검색 근거에 없어도 인정한다 (승빈 QA #265·#273).
+
+    단, 본문에 금지 예시로 든 60% 같은 계수는 화이트리스트가 아니므로 여전히 잡는다."""
+
+    def test_prompt_fact_limits_pass_without_retrieval(self):
+        unmatched, _ = verifier.verify_numbers(
+            "합산 한도는 연 900만 원, 연금저축 단독은 600만 원입니다.",
+            ["세액공제와 무관한 근거 문단"], [])
+        self.assertEqual(unmatched, [])
+
+    def test_forbidden_example_coefficient_still_flagged(self):
+        unmatched, _ = verifier.verify_numbers(
+            "퇴직급여는 평균임금의 60%를 적용합니다.",
+            ["평균임금 × 근속연수로 산정"], [])
+        self.assertEqual(unmatched, ["60%"])
+
+
 if __name__ == "__main__":
     unittest.main()

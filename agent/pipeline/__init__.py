@@ -109,7 +109,11 @@ def answer(question_id: str, question: str) -> dict:
                     amounts[0], int(year.group(1)) if year else 1)
                 trace.append(f"[계산] 연금수령한도({basis} 근거): {calc_trace}")
                 calc_notes.append(calc_trace + f" (근거: {basis})")
-        if re.search(r"중도(인출|해지).*(세금|세율|소득세)|세금.*중도(인출|해지)", question):
+        # "IRP 깨는 세금"처럼 구어(깨다·헐다)로 물으면 계산기가 빠져 HCX가
+        # 15.4% 같은 근거 없는 세율을 지어냈다 (승빈 QA #251) — 구어도 트리거한다.
+        if re.search(r"중도(인출|해지).*(세금|세율|소득세)|세금.*중도(인출|해지)"
+                     r"|(IRP|연금\s*저축|연금\s*계좌|퇴직\s*연금).{0,8}(깨|헐).{0,10}(세금|세율|소득세)",
+                     question):
             amounts = calculator.extract_amounts(question)
             # 금액이 없으면 세율만 안내한다 (amount=None 경로)
             result, calc_trace, basis = calculator.early_withdrawal_tax(

@@ -145,15 +145,22 @@ def verify_numbers(answer: str, context_blocks: list[str],
     1,600을 되풀이하는 것은 환각이 아닌데, 근거에만 대조하면 미확인으로
     찍혔다 (300문 QA 실측: 세제 리포트 미확인 13건 중 절반이 질문 수치
     재진술). 질문의 틀린 전제를 확인 없이 승인하는 문제는 검증2와
-    전제교정의 몫이다 — 검증1은 존재 대조만 한다."""
+    전제교정의 몫이다 — 검증1은 존재 대조만 한다.
+
+    CONFUSABLE_FACTS(프롬프트 고정 사실)의 한도·세율 수치도 근거로 인정한다 —
+    900만·600만 같은 검증된 한도를 모델이 프롬프트에서 가져와 옳게 답했는데
+    검색 근거에 그 문서가 안 걸리면 미확인으로 찍혔다 (승빈 QA #265·#273).
+    본문 전체가 아니라 값 화이트리스트만 넣는다: 원문에는 "60%, 90일"처럼
+    쓰지 말라고 든 금지 예시 수치도 있어 통째로 넣으면 그 환각이 통과된다."""
+    from .generator import PROMPT_FACT_PCTS, PROMPT_FACT_WONS
     evidence_text = (" ".join(context_blocks) + " " + " ".join(calc_notes)
                      + " " + question)
     evidence_norm = _normalize(evidence_text)
     evidence_nums = [v for v in (_num_value(n) for n in _numbers(evidence_text)) if v is not None]
     # 근거의 한국어 금액("900만원")도 원 단위 값으로 집합에 넣는다
     evidence_nums += [_k_won(m) for m in _KAMOUNT.finditer(evidence_text)]
-    evidence_vals = {round(v) for v in evidence_nums}
-    evidence_pcts = _percent_values(evidence_text)
+    evidence_vals = {round(v) for v in evidence_nums} | PROMPT_FACT_WONS
+    evidence_pcts = _percent_values(evidence_text) + list(PROMPT_FACT_PCTS)
 
     # 답변의 한국어 금액은 통째로 값 대조한다 — 토큰화하면 "115만 5천 원"이
     # "115"와 "5"로 쪼개져 어떤 문자열 대조로도 살아남지 못한다.
