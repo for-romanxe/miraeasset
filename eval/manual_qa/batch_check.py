@@ -58,6 +58,15 @@ def make_answerer(use_http: bool):
     from agent import pipeline
     from agent.pipeline import generator
 
+    # 키 없이 돌리면 MockLLM으로 조용히 진행돼 리포트가 통째로 무효가 된다
+    # (승빈 300문 실측: 230번부터 새 터미널에서 .env 미로드 → 71문항 재실행).
+    if generator.get_llm().name == "mock":
+        print("⛔ CLOVASTUDIO_API_KEY가 없어 MockLLM으로 실행됩니다 — 리포트가 무효입니다.\n"
+              "   레포 루트에서 `set -a && . ./.env && set +a` 후 다시 실행하세요.\n"
+              "   (Mock으로 파이프라인 경로만 볼 거면 --allow-mock 추가)")
+        if "--allow-mock" not in sys.argv:
+            raise SystemExit(2)
+
     def via_direct(qid: str, q: str) -> dict:
         try:
             return pipeline.answer(qid, q)
