@@ -209,6 +209,25 @@ class ApplyTest(unittest.TestCase):
         self.assertNotIn("[검증2]", trace)
 
 
+class PercentDiffDerivationTest(unittest.TestCase):
+    """%p 차 유도 — "4.0%와 3.47%의 차 0.53%p"는 정당한 산술 (석규 QA #148).
+
+    합은 인정하지 않는다: 14%+1.4%=15.4% 같은 환각 세율 조합의 통로가 된다."""
+
+    def test_percent_difference_is_derivable(self):
+        unmatched, trace = verifier.verify_numbers(
+            "단기가 장기보다 1년 수익률이 0.53% 낮습니다.",
+            ["단기 1년 수익률 3.47%", "장기 1년 수익률 4.0%"], [])
+        self.assertEqual(unmatched, [])
+        self.assertIn("유도 산술 인정", trace)
+
+    def test_percent_sum_is_not_derivable(self):
+        unmatched, _ = verifier.verify_numbers(
+            "이 경우 15.4%가 적용됩니다.",
+            ["기타소득세 14%", "지방소득세 1.4%"], [])
+        self.assertEqual(unmatched, ["15.4%"])
+
+
 class PromptFactWhitelistTest(unittest.TestCase):
     """CONFUSABLE_FACTS의 한도·세율은 검색 근거에 없어도 인정한다 (승빈 QA #265·#273).
 

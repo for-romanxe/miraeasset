@@ -116,10 +116,21 @@ def _derivable_value(v: float, evidence_nums: list[float],
 def _derivable(target: str, evidence_nums: list[float],
                evidence_pcts: list[float] | None = None) -> bool:
     """target 토큰이 근거 수치들로부터 정당하게 유도됐는지 확인."""
+    pcts = evidence_pcts or []
+    if "%" in target:
+        # %는 근거 %끼리의 '차'만 유도로 인정한다 — "1년 수익률 4.0%와 3.47%의
+        # 차 0.53%p" 같은 정당한 비교 산술 (석규 QA #148). 합은 인정하지 않는다:
+        # 14%+1.4%=15.4% 같은 환각 세율 조합이 통과되는 통로가 된다.
+        try:
+            v = float(target.rstrip("%").replace(",", ""))
+        except ValueError:
+            return False
+        return any(abs(abs(a - b) - v) < 0.005
+                   for i, a in enumerate(pcts) for b in pcts[i + 1:])
     v = _num_value(target)
     if v is None:
         return False
-    return _derivable_value(v, evidence_nums, evidence_pcts or [])
+    return _derivable_value(v, evidence_nums, pcts)
 
 
 def _split_sentences(text: str) -> list[str]:
