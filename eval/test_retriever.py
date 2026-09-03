@@ -67,9 +67,9 @@ class RetrieverGeneralizationTest(unittest.TestCase):
 
 class AumFormatTest(unittest.TestCase):
     def test_aum_shows_correct_eok_conversion(self):
-        """"4,426백만원"만 주면 HCX가 "4,426억"으로 바꿔 쓴다 — 올바른 억원 병기."""
-        self.assertEqual(format_aum(4426), "4,426백만원(약 44억원)")
-        self.assertEqual(format_aum(1827), "1,827백만원(약 18억원)")
+        """"4,426백만원"만 주면 HCX가 "4,426억"으로 바꿔 쓴다 — 올바른 억원을 앞에."""
+        self.assertEqual(format_aum(4426), "약 44억원(4,426백만원)")
+        self.assertEqual(format_aum(1827), "약 18억원(1,827백만원)")
 
 
 if __name__ == "__main__":
