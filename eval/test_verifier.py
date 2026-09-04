@@ -214,12 +214,20 @@ class PercentDiffDerivationTest(unittest.TestCase):
 
     합은 인정하지 않는다: 14%+1.4%=15.4% 같은 환각 세율 조합의 통로가 된다."""
 
-    def test_percent_difference_is_derivable(self):
+    def test_percent_point_difference_is_derivable(self):
         unmatched, trace = verifier.verify_numbers(
-            "단기가 장기보다 1년 수익률이 0.53% 낮습니다.",
+            "단기가 장기보다 1년 수익률이 0.53%p 낮습니다.",
             ["단기 1년 수익률 3.47%", "장기 1년 수익률 4.0%"], [])
         self.assertEqual(unmatched, [])
         self.assertIn("유도 산술 인정", trace)
+
+    def test_plain_percent_difference_is_not_derivable(self):
+        """%p 표기가 아니면 차 유도를 인정하지 않는다 — "평균임금의 60%" 환각이
+        근거 %끼리의 우연한 차와 일치해 통과했다 (자기교정 실측 회귀)."""
+        unmatched, _ = verifier.verify_numbers(
+            "평균임금의 60%를 적용합니다.",
+            ["위험자산 한도 70%", "안전자산 10%"], [])
+        self.assertEqual(unmatched, ["60%"])
 
     def test_percent_sum_is_not_derivable(self):
         unmatched, _ = verifier.verify_numbers(

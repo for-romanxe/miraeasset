@@ -194,7 +194,11 @@ def verify_numbers(answer: str, context_blocks: list[str],
     for n in nums:
         if _normalize(n).rstrip("%") in evidence_norm:
             continue
-        if _derivable(n, evidence_nums, evidence_pcts):
+        # %차 유도는 답변이 "0.53%p"처럼 명시적 차이 표기일 때만 —
+        # 표기 제한 없이 인정했더니 "평균임금의 60%" 환각이 근거 %끼리의
+        # 우연한 차와 일치해 통과했다 (자기교정 실측 회귀).
+        pct_diff_ok = "%" not in n or (n + "p") in masked
+        if pct_diff_ok and _derivable(n, evidence_nums, evidence_pcts):
             derived.append(n)
             continue
         unmatched.append(n)

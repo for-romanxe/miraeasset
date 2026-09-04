@@ -27,7 +27,7 @@ class SelfCorrectionTest(unittest.TestCase):
             return (first_unsupported if calls["claims"] == 1 else regen_unsupported,
                     "[검증2] stub")
 
-        def fake_nums(ans, ctx, calc):
+        def fake_nums(ans, ctx, calc, question=""):
             calls["nums"] += 1
             return (first_unmatched if calls["nums"] == 1 else regen_unmatched,
                     "[검증] stub")
@@ -64,7 +64,7 @@ class SelfCorrectionTest(unittest.TestCase):
         def fake_claims(a, c, cn):
             return ["문장A"], "[검증2] stub"
 
-        def fake_nums(a, c, cn):
+        def fake_nums(a, c, cn, question=""):
             return [], "[검증] stub"
 
         with patch.object(verifier, "verify_claims_llm", fake_claims), \
@@ -84,7 +84,7 @@ class SelfCorrectionTest(unittest.TestCase):
         def fake_claims(a, c, cn):
             return ["문장A"], "[검증2] stub"
 
-        def fake_nums(a, c, cn):
+        def fake_nums(a, c, cn, question=""):
             return [], "[검증] stub"
 
         with patch.object(verifier, "verify_claims_llm", fake_claims), \
