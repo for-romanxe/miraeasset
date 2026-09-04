@@ -88,8 +88,12 @@ def withdrawal_premise_correction(question: str, result: dict) -> str | None:
     return None
 
 
-def pension_income_tax(age: int | None = None) -> tuple[dict, str, str]:
-    """연금소득세율(지방소득세 포함). 나이 미상이면 전 구간 표를 돌려준다."""
+def pension_income_tax(age: int | None = None,
+                       annual_amount: int | None = None) -> tuple[dict, str, str]:
+    """연금소득세율(지방소득세 포함). 나이 미상이면 전 구간 표를 돌려준다.
+
+    수령액이 있으면 세액·실수령액까지 계산한다 — HCX가 "4.4%"라고 옳게 말하고
+    곱셈은 4%·3.5%로 틀리는 일이 반복됐다 (복합 QA #26, spot 재확인)."""
     table = [(55, 69, 5.5), (70, 79, 4.4), (80, 200, 3.3)]
     if age is None:
         trace = "연금소득세율: 55~69세 5.5% / 70~79세 4.4% / 80세 이상 3.3% (연금 형태 수령 시)"
@@ -99,6 +103,10 @@ def pension_income_tax(age: int | None = None) -> tuple[dict, str, str]:
         trace = f"{age}세는 연금 수령 개시 연령(55세) 미만 — 연금소득세율 적용 대상 아님"
         return {"rate": None}, trace, "doc38"
     trace = f"연금소득세율: {age}세 → {rate}% (55~69세 5.5 / 70대 4.4 / 80세~ 3.3)"
+    if annual_amount:
+        tax = annual_amount * rate / 100
+        trace += (f" | 연 {annual_amount:,}원 수령 시 세액 {tax:,.0f}원, "
+                  f"실수령 {annual_amount - tax:,.0f}원")
     return {"rate": rate}, trace, "doc38"
 
 
@@ -200,8 +208,11 @@ def isa_transfer_credit(transfer_amount: int) -> tuple[dict, str, str]:
     return {"additional_eligible": round(additional_eligible)}, trace, "doc23"
 
 
-# "6천만원"의 천만 단위를 못 읽어 수령한도 계산기가 통째로 빠졌다 (복합 QA #79)
-AMOUNT = re.compile(r"(\d[\d,]*)\s*억\s*원|(\d[\d,]*)\s*천\s*만\s*원"
+# "6천만원"의 천만 단위를 못 읽어 수령한도 계산기가 통째로 빠졌다 (복합 QA #79).
+# "1억 있으면"처럼 원을 생략한 억 표기도 마찬가지 (spot 재확인 #2 — 미발동 시
+# HCX가 ÷(11-1)을 ÷11로 계산). 만 단위 원 생략("500만 넣으면")은 나이·년차와
+# 헷갈릴 수 있어 여기서는 허용하지 않는다.
+AMOUNT = re.compile(r"(\d[\d,]*)\s*억(?:\s*원)?|(\d[\d,]*)\s*천\s*만\s*원"
                     r"|(\d[\d,]*)\s*만\s*원|(\d[\d,]*)\s*원")
 AGE = re.compile(r"(\d{2})\s*세")
 PERCENT = re.compile(r"(\d+(?:\.\d+)?)\s*%")

@@ -12,7 +12,12 @@ from .router import build_hcx_router_prompt, route, route_from_hcx
 # 세액공제 계산 트리거. "세액공제"라는 용어를 안 쓰고 묻는 경우가 많다
 # ("다 공제되나요?", "얼마나 돌려받나요?"). 바깥에서 이미 세제 분류를 통과한
 # 질의만 들어오므로 이 정도 폭은 안전하다.
-TAX_CREDIT_ASK = re.compile(r"세액\s*공제|공제\s*(되|받|해|가능)|돌려받|환급")
+TAX_CREDIT_ASK = re.compile(r"세액\s*공제|공제\s*(되|받|해|가능)|공제액|공제금|돌려받|환급")
+
+# 주기 납입 표현 → 연 환산 배수. "매달 30만원 붓는데 1년 공제액은?"에서
+# 계산기가 빠지거나 월 금액을 연 납입으로 오인하는 것을 막는다 (복합 QA B 실측)
+_PERIODIC = ((re.compile(r"매달|매월|월\s*\d|월마다"), 12),
+             (re.compile(r"격월"), 6), (re.compile(r"매주|주마다"), 52))
 
 
 def answer(question_id: str, question: str) -> dict:
@@ -86,14 +91,23 @@ def answer(question_id: str, question: str) -> dict:
     if "세제" in r.categories:
         if TAX_CREDIT_ASK.search(question) and "ISA" not in question:
             amounts = calculator.extract_amounts(question)
+            # "매달 30만원"은 연 360만원으로 환산해 계산한다
+            periodic = next((k for pat, k in _PERIODIC if pat.search(question)), 1)
+            if periodic > 1:
+                amounts = [a * periodic for a in amounts]
             # 계좌명이 있으면 위치 기준으로 배정한다. 언급 순서대로 넣으면
             # "IRP 200만원이랑 연금저축 700만원"에서 캡이 잘못 적용된다.
             by_account = calculator.split_amounts_by_account(question)
             if by_account is None:
                 by_account = (amounts[0] if amounts else 0,
                               amounts[1] if len(amounts) > 1 else 0)
+            elif periodic > 1:
+                by_account = (by_account[0] * periodic, by_account[1] * periodic)
             result, calc_trace, basis = calculator.tax_credit(
                 pension_saving=by_account[0], irp=by_account[1])
+            if periodic > 1 and amounts:
+                calc_notes.append(f"질문의 주기 납입액은 연 환산 기준입니다 "
+                                  f"(×{periodic}) (근거: doc41)")
             if amounts:
                 trace.append(f"[계산] 세액공제({basis} 근거): {calc_trace}")
                 calc_notes.append(calc_trace + f" (근거: {basis})")
@@ -108,8 +122,10 @@ def answer(question_id: str, question: str) -> dict:
         # 수령 시 연금소득세 표가 끼어들면 엉뚱한 근거가 된다 (300문 QA 세제 #58).
         if (re.search(r"연금소득세|받을 때.*세[금율]|수령.*세[금율]|세율", question)
                 and not re.search(r"중도\s*(인출|해지)", question)):
+            income_amounts = calculator.extract_amounts(question)
             _, calc_trace, basis = calculator.pension_income_tax(
-                calculator.extract_age(question))
+                calculator.extract_age(question),
+                income_amounts[0] if income_amounts else None)
             trace.append(f"[계산] 연금소득세({basis} 근거): {calc_trace}")
             calc_notes.append(calc_trace + f" (근거: {basis})")
         if re.search(r"퇴직(금|소득세).*(연금.*받|수령|감면)|감면.*퇴직", question):
