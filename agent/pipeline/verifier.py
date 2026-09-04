@@ -194,7 +194,11 @@ def verify_numbers(answer: str, context_blocks: list[str],
     for n in nums:
         if _normalize(n).rstrip("%") in evidence_norm:
             continue
-        if _derivable(n, evidence_nums, evidence_pcts):
+        # %차 유도는 답변이 "0.53%p"처럼 명시적 차이 표기일 때만 —
+        # 표기 제한 없이 인정했더니 "평균임금의 60%" 환각이 근거 %끼리의
+        # 우연한 차와 일치해 통과했다 (자기교정 실측 회귀).
+        pct_diff_ok = "%" not in n or (n + "p") in masked
+        if pct_diff_ok and _derivable(n, evidence_nums, evidence_pcts):
             derived.append(n)
             continue
         unmatched.append(n)
@@ -310,7 +314,7 @@ def verify_claims_llm(answer: str, context_blocks: list[str], calc_notes: list[s
 
 def apply(answer: str, context_blocks: list[str], calc_notes: list[str],
           llm_name: str, *, skip_claims: bool = False,
-          question: str = "") -> tuple[str, str]:
+          question: str = "", regenerate=None) -> tuple[str, str]:
     """검증을 수행하고 (필요 시 보정된 답변, 트레이스)를 돌려준다.
 
     미확인 수치나 미지지 문장이 있으면: Mock 단계에서는 기록만 남기고, 실제
@@ -331,6 +335,31 @@ def apply(answer: str, context_blocks: list[str], calc_notes: list[str],
         unsupported, trace2 = verify_claims_llm(answer, context_blocks, calc_notes)
     if trace2:
         trace += "\n" + trace2
+
+    # 자기교정(#62 세션): 미지지 문장이 있고 재생성 콜백이 있으면 1회 다시 쓰게
+    # 하고 재검증한다. 깨끗해지면 채택, 줄었지만 남으면 개선분 채택 후 안내,
+    # 효과 없으면 원본 유지. 재생성·재검증에 HCX 호출 2회가 추가되지만 평가
+    # 타임아웃 300초(8/24 공지) 안에서 감당된다. 폴백이 현행 동작이라 최악의
+    # 경우에도 지금과 같다.
+    if unsupported and regenerate is not None and llm_name != "mock":
+        new_answer = regenerate(unsupported)
+        r_unmatched, _ = verify_numbers(new_answer, context_blocks, calc_notes, question)
+        if skip_claims:
+            r_unsupported = []
+        else:
+            r_unsupported, _ = verify_claims_llm(new_answer, context_blocks, calc_notes)
+        if not r_unsupported and not r_unmatched:
+            trace += (f"\n[자기교정] 미지지 {len(unsupported)}건 → 재생성 후 0건, "
+                      "교정 답변 채택")
+            return new_answer, trace
+        if len(r_unsupported) + len(r_unmatched) < len(unsupported) + len(unmatched):
+            trace += (f"\n[자기교정] 미지지 {len(unsupported)}→{len(r_unsupported)}건, "
+                      "개선분 채택 후 안내")
+            answer, unmatched, unsupported = new_answer, r_unmatched, r_unsupported
+        else:
+            trace += (f"\n[자기교정] 재생성 효과 없음(미지지 {len(r_unsupported)}건), "
+                      "원본 유지")
+
     if (unmatched or unsupported) and llm_name != "mock":
         answer += ("\n\n※ 위 답변 중 일부 내용은 제공된 자료에서 직접 확인되지 "
                    "않았습니다. 정확한 값은 근거 문서를 확인해 주세요.")
