@@ -7,7 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agent.pipeline.retriever import format_aum, get_docs_index  # noqa: E402
+from agent.pipeline.retriever import (  # noqa: E402
+    format_aum,
+    get_docs_index,
+    get_funds_index,
+    parse_fund_filter,
+)
 
 
 class RetrieverGeneralizationTest(unittest.TestCase):
@@ -63,6 +68,37 @@ class RetrieverGeneralizationTest(unittest.TestCase):
             ),
             "doc55의 DB 퇴직급여 사무담당자 역할 청크가 필요합니다.",
         )
+
+
+class FundConditionSearchTest(unittest.TestCase):
+    """이름 없는 조건 질의 — by_name이 못 잡아 "없음" 오답이 났다 (석규 QA H 5/15)."""
+
+    def test_fee_ceiling_with_asset_type(self):
+        """"총보수 0.3% 아래 채권형" — 실제로 0.085%부터 여럿 있다 (#134 오답 재현)."""
+        cond = parse_fund_filter("총보수 0.3% 아래 채권형 뭐 있어요?")
+        self.assertEqual(cond["asset_type_group"], "채권형")
+        self.assertEqual(cond["max_fee"], 0.3)
+        matches = get_funds_index().filter(**cond, k=5)
+        self.assertTrue(matches)
+        self.assertTrue(all(f["min_total_fee"] <= 0.3 for f in matches))
+
+    def test_cheapest_fund_sorts_by_fee(self):
+        cond = parse_fund_filter("보수가 가장 저렴한 펀드가 뭐예요?")
+        self.assertTrue(cond["sort_by_fee"])
+        matches = get_funds_index().filter(**cond, k=3)
+        fees = [f["min_total_fee"] for f in matches]
+        self.assertEqual(fees, sorted(fees))
+
+    def test_low_risk_within_asset_type(self):
+        cond = parse_fund_filter("주식형 중 위험등급 낮은 게 있어요?")
+        self.assertEqual(cond["asset_type_group"], "주식형")
+        self.assertEqual(cond["sort_by_risk"], "low")
+
+    def test_explanation_and_tax_questions_do_not_trigger(self):
+        """설명·세제 질의를 조건 검색으로 오인하면 안 된다."""
+        for q in ["채권형 펀드가 뭐예요?", "IRP 세액공제 한도 알려줘",
+                  "연금저축 안정적으로 운용하는 원칙 알려줘"]:
+            self.assertIsNone(parse_fund_filter(q), q)
 
 
 class AumFormatTest(unittest.TestCase):
