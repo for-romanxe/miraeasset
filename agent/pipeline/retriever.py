@@ -183,7 +183,9 @@ class FundsIndex:
 
     def filter(self, *, max_risk_grade: int | None = None, min_risk_grade: int | None = None,
                asset_type_group: str | None = None, pension_only: bool = False,
-               sort_by_fee: bool = False, k: int = 10) -> list[dict]:
+               max_fee: float | None = None,
+               sort_by_fee: bool = False, sort_by_risk: str | None = None,
+               k: int = 10) -> list[dict]:
         out = []
         for f in self.funds:
             g = f.get("risk_grade")
@@ -195,10 +197,59 @@ class FundsIndex:
                 continue
             if pension_only and not f.get("has_pension_class"):
                 continue
+            fee = f.get("min_total_fee")
+            if max_fee is not None and (fee is None or fee > max_fee):
+                continue
             out.append(f)
         if sort_by_fee:
             out.sort(key=lambda f: (f.get("min_total_fee") is None, f.get("min_total_fee")))
+        elif sort_by_risk == "low":
+            # 위험등급은 숫자가 클수록 낮은 위험 (6=매우 낮음, 1=매우 높음)
+            out.sort(key=lambda f: -(f.get("risk_grade") or 0))
+        elif sort_by_risk == "high":
+            out.sort(key=lambda f: (f.get("risk_grade") is None, f.get("risk_grade")))
         return out[:k]
+
+
+# 조건 검색 트리거 — "총보수 0.3% 아래 채권형 뭐 있어요?"류. 펀드명 없는 조건
+# 질의는 by_name이 못 잡아 "해당 상품 없음" 오답이 났다 (석규 QA H 카테고리 5/15).
+_COND_ASSET = (("채권형", re.compile(r"채권")), ("주식형", re.compile(r"주식")),
+               ("혼합형", re.compile(r"혼합")), ("재간접형", re.compile(r"재간접")))
+_COND_MAX_FEE = re.compile(r"(\d+(?:\.\d+)?)\s*%\s*(?:이하|아래|미만|밑|보다 (?:낮|싼|저렴))")
+_COND_FEE_LOW = re.compile(r"(?:보수|수수료).{0,10}(?:저렴|싸|낮|적)"
+                           r"|(?:제일|가장|젤)\s*(?:저렴|싸|낮)[^.?!]{0,8}(?:보수|수수료|펀드|상품)"
+                           r"|(?:보수|수수료).{0,6}(?:제일|가장|젤)\s*(?:저렴|싸|낮)")
+_COND_RISK_LOW = re.compile(r"위험(?:등급)?.{0,8}(?:낮|적)|안정적?[인로]")
+_COND_RISK_HIGH = re.compile(r"위험(?:등급)?.{0,8}(?:높|큰)|공격적")
+_COND_SUBJECT = re.compile(r"펀드|상품|채권형|주식형|혼합형|ETF", re.IGNORECASE)
+
+
+def parse_fund_filter(question: str) -> dict | None:
+    """질문에서 펀드 조건 검색 파라미터를 뽑는다. 조건이 없으면 None."""
+    if not _COND_SUBJECT.search(question):
+        return None
+    params: dict = {}
+    for group, pat in _COND_ASSET:
+        if pat.search(question):
+            params["asset_type_group"] = group
+            break
+    m = _COND_MAX_FEE.search(question)
+    if m and re.search(r"보수|수수료", question):
+        params["max_fee"] = float(m.group(1))
+        params["sort_by_fee"] = True
+    elif _COND_FEE_LOW.search(question):
+        params["sort_by_fee"] = True
+    if not params.get("sort_by_fee"):
+        if _COND_RISK_LOW.search(question):
+            params["sort_by_risk"] = "low"
+        elif _COND_RISK_HIGH.search(question):
+            params["sort_by_risk"] = "high"
+    # 정렬·상한 조건이 하나는 있어야 조건 검색이다 — 유형만으로는
+    # 일반 설명 질의("채권형 펀드가 뭐예요")까지 잘못 낚는다.
+    if not (params.get("max_fee") is not None or params.get("sort_by_fee")
+            or params.get("sort_by_risk")):
+        return None
+    return params
 
 
 def format_aum(aum: float) -> str:

@@ -5,7 +5,7 @@ import os
 import re
 
 from . import calculator, compare, generator, verifier
-from .retriever import fund_brief, get_docs_index, get_funds_index
+from .retriever import fund_brief, get_docs_index, get_funds_index, parse_fund_filter
 from .router import build_hcx_router_prompt, route, route_from_hcx
 
 
@@ -57,6 +57,21 @@ def answer(question_id: str, question: str) -> dict:
             context_blocks.append(compare.build_table(hits))
             has_table = True
         context_blocks += [fund_brief(f) for f in hits]
+    else:
+        # 조건 검색: "총보수 0.3% 아래 채권형"처럼 이름 없는 조건 질의는
+        # by_name이 못 잡아 "해당 상품 없음" 오답이 났다 (석규 QA H 5/15)
+        cond = parse_fund_filter(question)
+        if cond:
+            matches = get_funds_index().filter(**cond, k=5)
+            if matches:
+                if "상품" not in r.categories:
+                    r.categories.append("상품")
+                desc = ", ".join(f"{k}={v}" for k, v in cond.items())
+                trace.append(f"[상품필터] 조건({desc}) 매칭 {len(matches)}건: "
+                             + ", ".join(f.get("fund_name", "?")[:20] for f in matches[:3]) + " …")
+                context_blocks.append(
+                    "[조건 검색 결과 — 아래는 조건에 맞는 취급 펀드 목록입니다]")
+                context_blocks += [fund_brief(f) for f in matches]
 
     # 문서 검색 (제도·세제·절차·일반)
     doc_hits = get_docs_index().search(question, k=5)
