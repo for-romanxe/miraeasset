@@ -113,6 +113,19 @@ class RateOnlyWithdrawalTest(unittest.TestCase):
             self.assertIn("[계산] 중도인출 세금", trace, question)
             self.assertIn("16.5%", trace, question)
 
+    def test_colloquial_tax_words_trigger_calc(self):
+        """세금 쪽 표현도 구어를 인식한다 (#57 "몇 프로", #62 "손에 쥐는 돈").
+
+        계산기가 빠지자 개인회생을 부득이한 사유가 아니라고 반대로 판정하고
+        (정답: 65세 5.5% 연금소득세), 500만 해지에 825만 수령이라는 산술
+        붕괴가 나왔다."""
+        trace = answer("t", "개인회생 중인데 IRP 깨면 몇 프로 떼나요? 65세입니다.")["think_trace"]
+        self.assertIn("[계산] 중도인출 세금", trace)
+        self.assertIn("5.5% 연금소득세", trace)
+        trace = answer("t", "연금저축 500만원 해지하면 손에 쥐는 돈이 얼마죠?")["think_trace"]
+        self.assertIn("[계산] 중도인출 세금", trace)
+        self.assertIn("825,000", trace)
+
 
 if __name__ == "__main__":
     unittest.main()
