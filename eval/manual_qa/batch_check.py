@@ -107,7 +107,8 @@ def main() -> int:
             continue
         dt = time.time() - t0
         verify = [l for l in d["think_trace"].split("\n")
-                  if l.startswith(("[검증", "[라우팅", "[전제교정", "[가드", "[가정"))]
+                  if l.startswith(("[검증", "[라우팅", "[전제교정", "[가드", "[가정",
+                                   "[자기교정", "[상품필터", "[계산"))]
         notice = "※" in d["answer"]
         bad = notice or any("미확인" in v or ("미지지 " in v and "0건" not in v)
                             for v in verify)

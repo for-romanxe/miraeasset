@@ -236,6 +236,33 @@ class PercentDiffDerivationTest(unittest.TestCase):
         self.assertEqual(unmatched, ["15.4%"])
 
 
+class CompositeDerivationTest(unittest.TestCase):
+    """복합 QA 실측 유도 2종 — 연 환산(×12)과 실수령액(a−a×p%)."""
+
+    def test_monthly_to_annual_when_question_is_periodic(self):
+        """"매달 30만원"의 연 360만원은 질문이 주기 표현일 때만 인정 (#11)."""
+        unmatched, _ = verifier.verify_numbers(
+            "연간 360만원을 납입하게 됩니다.", ["세액공제 안내"], [],
+            "매달 30만원씩 연금저축에 붓고 있어요. 1년 공제액이 얼마나 되나요?")
+        self.assertEqual(unmatched, [])
+        unmatched, _ = verifier.verify_numbers(
+            "연간 360만원을 납입하게 됩니다.", ["30만원 관련 근거"], [],
+            "연금저축 30만원 넣으면 어떻게 되나요?")
+        self.assertEqual(unmatched, ["360만원"])
+
+    def test_net_amount_after_percent_is_derivable(self):
+        """"1,200만원에서 5.5%를 떼면 1,134만원"은 유도 인정, 잘못 계산한
+        1,152만원(4.4%를 4%로 계산)은 여전히 잡는다 (#26 실측)."""
+        unmatched, _ = verifier.verify_numbers(
+            "실수령액은 1,134만 원입니다.",
+            ["연 1,200만원 수령", "세율 5.5%"], [])
+        self.assertEqual(unmatched, [])
+        unmatched, _ = verifier.verify_numbers(
+            "실수령액은 1,152만 원입니다.",
+            ["연 1,200만원 수령", "세율 4.4%"], [])
+        self.assertEqual(unmatched, ["1,152만 원"])
+
+
 class PromptFactWhitelistTest(unittest.TestCase):
     """CONFUSABLE_FACTS의 한도·세율은 검색 근거에 없어도 인정한다 (승빈 QA #265·#273).
 

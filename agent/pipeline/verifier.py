@@ -110,6 +110,11 @@ def _derivable_value(v: float, evidence_nums: list[float],
         for p in evidence_pcts:
             if abs(a * p / 100.0 - v) < 0.5:
                 return True
+            # 실수령액 2단계: "1,200만원에서 5.5%를 떼면 1,134만원" (복합 QA #26).
+            # 같은 a에 같은 p를 적용한 차만 인정하므로 임의 조합은 통과 못 한다 —
+            # 실제로 #26의 4.4%를 4%로 잘못 계산한 1,152만원은 그대로 잡힌다.
+            if abs(a - a * p / 100.0 - v) < 0.5:
+                return True
     return False
 
 
@@ -172,6 +177,14 @@ def verify_numbers(answer: str, context_blocks: list[str],
     evidence_nums += [_k_won(m) for m in _KAMOUNT.finditer(evidence_text)]
     evidence_vals = {round(v) for v in evidence_nums} | PROMPT_FACT_WONS
     evidence_pcts = _percent_values(evidence_text) + list(PROMPT_FACT_PCTS)
+
+    # 주기 납입 질의의 연 환산 — "매달 30만원"의 연 360만원이 근거 어디에도
+    # 없어 미확인으로 찍혔다 (복합 QA B 카테고리 실측 다수). 질문이 주기
+    # 표현을 쓸 때만, 값 대조 집합에 한해 환산값을 인정한다 (합·차·곱셈
+    # 유도의 소스로는 쓰지 않아 조합 폭발과 우연 일치를 막는다).
+    if re.search(r"매달|매월|월\s*\d|매주|격월|주\s*\d", question):
+        evidence_vals |= {round(v * k) for v in evidence_nums
+                         for k in (12, 6, 52) if v > 0}
 
     # 답변의 한국어 금액은 통째로 값 대조한다 — 토큰화하면 "115만 5천 원"이
     # "115"와 "5"로 쪼개져 어떤 문자열 대조로도 살아남지 못한다.
