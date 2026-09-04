@@ -103,10 +103,13 @@ def pension_income_tax(age: int | None = None) -> tuple[dict, str, str]:
 
 
 def retirement_tax_discount(receive_year: int = 1) -> tuple[dict, str, str]:
-    """퇴직소득세 감면율: 연금 수령 시 30%, 11년차부터 40%."""
-    rate = 0.4 if receive_year >= 11 else 0.3
+    """퇴직소득세 감면율: 연금 수령 시 30%, 11년차부터 40%, 21년차부터 50%.
+
+    21년차 구간은 doc51 원문("21년차부터는 50% 감면")에 있는데 계산기가
+    빠뜨리고 있었다 — 복합 QA #270·#445 검수에서 코퍼스 대조로 발견."""
+    rate = 0.5 if receive_year >= 21 else 0.4 if receive_year >= 11 else 0.3
     trace = (f"퇴직소득세 감면: 연금수령 {receive_year}년차 → {rate:.0%} 감면 "
-             "(1~10년차 30%, 11년차부터 40%)")
+             "(1~10년차 30%, 11~20년차 40%, 21년차부터 50%)")
     return {"discount": rate}, trace, "doc51"
 
 
@@ -197,7 +200,9 @@ def isa_transfer_credit(transfer_amount: int) -> tuple[dict, str, str]:
     return {"additional_eligible": round(additional_eligible)}, trace, "doc23"
 
 
-AMOUNT = re.compile(r"(\d[\d,]*)\s*억\s*원|(\d[\d,]*)\s*만\s*원|(\d[\d,]*)\s*원")
+# "6천만원"의 천만 단위를 못 읽어 수령한도 계산기가 통째로 빠졌다 (복합 QA #79)
+AMOUNT = re.compile(r"(\d[\d,]*)\s*억\s*원|(\d[\d,]*)\s*천\s*만\s*원"
+                    r"|(\d[\d,]*)\s*만\s*원|(\d[\d,]*)\s*원")
 AGE = re.compile(r"(\d{2})\s*세")
 PERCENT = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 
@@ -210,9 +215,11 @@ def extract_age(question: str) -> int | None:
 def extract_amounts(question: str) -> list[int]:
     """질의에서 금액(원)을 추출. v0: 억원/만원/원 표기."""
     out = []
-    for eok, man, won in AMOUNT.findall(question):
+    for eok, cheonman, man, won in AMOUNT.findall(question):
         if eok:
             out.append(int(eok.replace(",", "")) * 100_000_000)
+        elif cheonman:
+            out.append(int(cheonman.replace(",", "")) * 10_000_000)
         elif man:
             out.append(int(man.replace(",", "")) * 10_000)
         elif won:
@@ -248,7 +255,7 @@ def split_amounts_by_account(question: str) -> tuple[int, int] | None:
         after = [(p - pos, k) for p, k in mentions if p > pos]
         nearest = min(before or after)[1]
         won = next(int(g.replace(",", "")) * mul
-                   for g, mul in zip(m.groups(), (100_000_000, 10_000, 1)) if g)
+                   for g, mul in zip(m.groups(), (100_000_000, 10_000_000, 10_000, 1)) if g)
         totals[nearest] += won
     return totals["pension_saving"], totals["irp"]
 

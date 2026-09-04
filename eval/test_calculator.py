@@ -113,6 +113,14 @@ class RateOnlyWithdrawalTest(unittest.TestCase):
             self.assertIn("[계산] 중도인출 세금", trace, question)
             self.assertIn("16.5%", trace, question)
 
+    def test_withdrawal_limit_triggers_with_spacing_variants(self):
+        """"수령한도라는 게 있다면서요"도 계산기가 돈다 (복합 QA #79·#236).
+
+        미발동 시 HCX가 ÷(11-n)을 빼먹고 10배 오계산(800만→8천만)했다."""
+        trace = answer("t", "수령한도라는 게 있다면서요. 계좌에 6천만원 있고 2년차면 한도 얼마고, 넘게 빼면 어떻게 돼요?")["think_trace"]
+        self.assertIn("[계산] 연금수령한도", trace)
+        self.assertIn("8,000,000", trace)
+
     def test_colloquial_tax_words_trigger_calc(self):
         """세금 쪽 표현도 구어를 인식한다 (#57 "몇 프로", #62 "손에 쥐는 돈").
 

@@ -116,9 +116,11 @@ def answer(question_id: str, question: str) -> dict:
             _, calc_trace, basis = calculator.retirement_tax_discount()
             trace.append(f"[계산] 퇴직소득세 감면({basis} 근거): {calc_trace}")
             calc_notes.append(calc_trace + f" (근거: {basis})")
-        if "연금수령한도" in question:
+        # "수령한도라는 게 있다면서요"처럼 띄어 쓰거나 '연금'을 생략해도 계산기가
+        # 돌아야 한다 — 미발동 시 HCX가 ÷(11-n)을 빼먹고 10배 오계산 (복합 QA #79·#236)
+        if re.search(r"(연금\s*)?수령\s*한도", question):
             amounts = calculator.extract_amounts(question)
-            year = re.search(r"(\d+)\s*년차", question)
+            year = re.search(r"(\d+)\s*년\s*차", question)
             if amounts:
                 _, calc_trace, basis = calculator.pension_withdrawal_limit(
                     amounts[0], int(year.group(1)) if year else 1)
