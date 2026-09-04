@@ -3,6 +3,7 @@ import unittest
 
 from agent.pipeline import answer
 from agent.pipeline.calculator import (
+    pension_income_tax,
     early_withdrawal_tax,
     isa_transfer_premise_correction,
     pension_tax_premise_correction,
@@ -112,6 +113,27 @@ class RateOnlyWithdrawalTest(unittest.TestCase):
             trace = answer("t", question)["think_trace"]
             self.assertIn("[계산] 중도인출 세금", trace, question)
             self.assertIn("16.5%", trace, question)
+
+    def test_bare_eok_amount_is_parsed(self):
+        """"1억 있으면"처럼 원을 생략해도 금액으로 읽는다 (spot 재확인 #2).
+
+        미발동 시 HCX가 수령한도를 ÷(11-1) 대신 ÷11로 계산했다."""
+        trace = answer("t", "1년차에 수령한도라는 게 있다면서요? 1억 있으면 첫해 최대 얼마까지 뺄 수 있어요?")["think_trace"]
+        self.assertIn("[계산] 연금수령한도", trace)
+        self.assertIn("12,000,000", trace)
+
+    def test_monthly_amount_is_annualized_for_credit(self):
+        """"매달 30만원"은 연 360만원으로 환산해 세액공제를 계산한다 (복합 QA #11)."""
+        trace = answer("t", "매달 30만원씩 연금저축에 붓고 있어요. 1년 공제액이 얼마나 되나요?")["think_trace"]
+        self.assertIn("[계산] 세액공제", trace)
+        self.assertIn("3,600,000", trace)
+
+    def test_pension_income_tax_includes_net_amount(self):
+        """수령액이 있으면 세액·실수령까지 계산한다 — HCX가 4.4% 곱셈을 반복해서
+        틀렸다 (복합 QA #26: 1,147.2만이 정답인데 1,152만·1,158만)."""
+        _, trace, _ = pension_income_tax(72, 12_000_000)
+        self.assertIn("528,000", trace)
+        self.assertIn("11,472,000", trace)
 
     def test_withdrawal_limit_triggers_with_spacing_variants(self):
         """"수령한도라는 게 있다면서요"도 계산기가 돈다 (복합 QA #79·#236).
