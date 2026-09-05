@@ -13,7 +13,7 @@ GET http://211.188.62.72/answer?question_id=<id>&question=<질문>
 - 팀명: 상상기업 (pen-017) / NCP 서버 `pen017api` (KR-1), HTTP 80
 - 헬스체크: `GET http://211.188.62.72/health`
 - 응답은 평가 명세의 5필드 JSON (question_id / question / retrieved_context / think_trace / answer)
-- 운영 기간: 2026-09-07 ~ 09-20 (24시간)
+- 운영 기간: 2026-09-07(월) 10:00 ~ 09-11(금) 15:00 (9/4 공지 — 이 기간 순차 수집)
 
 ## 작업 규칙 (PR 워크플로)
 
